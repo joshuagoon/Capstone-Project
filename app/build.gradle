@@ -8,6 +8,12 @@ group = 'org.example'
 version = '1.0-SNAPSHOT'
 sourceCompatibility = '17'
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -39,10 +45,13 @@ tasks.named('test') {
 // Fix Scala compilation
 tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = [
-        '-target:jvm-1.8',
         '-encoding', 'UTF-8',
         '-feature',
         '-unchecked',
         '-deprecation'
     ]
+}
+
+tasks.withType(JavaCompile) {
+    options.release = 17
 }
