@@ -32,7 +32,7 @@ case class ProjectRecommendation(
 @Service
 class AIRecommendationService {
 
-  @Value("${openai.api.key:none}")
+  @Value("${anthropic.api.key:none}")
   private var apiKey: String = _
   
   private val client = HttpClient.newHttpClient()
@@ -54,11 +54,11 @@ class AIRecommendationService {
     val prompt = buildPrompt(studentProfile, availableProjects)
     
     try {
-      val response = callOpenAIAPI(prompt)
+      val response = callClaudeAPI(prompt)
       parseRecommendations(response, availableProjects, studentProfile)
     } catch {
       case e: Exception =>
-        println(s"AI API failed, falling back to rule-based: ${e.getMessage}")
+        println(s"Claude API failed, falling back to rule-based: ${e.getMessage}")
         getRuleBasedRecommendations(studentProfile, availableProjects)
     }
   }
@@ -72,64 +72,81 @@ class AIRecommendationService {
       s"  • ${s.subjectName}: ${s.grade} (${s.percentage}%)"
     ).mkString("\n")
     
-    s"""You are an academic advisor. Recommend the TOP 3 capstone projects for this student.
+    s"""You are an academic advisor helping a computer science student choose the most suitable capstone project.
 
-Student: ${student.name}
-CGPA: ${student.cgpa}
-Top Subjects:
+Student Profile:
+- Name: ${student.name}
+- Overall CGPA: ${student.cgpa}
+- Top Subject Performances:
 $subjectsList
-Interests: ${student.interests}
+${if (student.interests.nonEmpty) s"- Stated Interests: ${student.interests}" else ""}
 
-Available Projects:
+Available Capstone Projects:
 $projectsList
 
-Return ONLY a JSON array (no markdown, no extra text):
+Task: Recommend the TOP 3 most suitable capstone projects for this student.
+
+For each recommendation, consider:
+1. Match between student's strong subjects and project's required skills
+2. Appropriate difficulty level based on CGPA (3.5+ = Advanced, 3.0-3.5 = Intermediate, <3.0 = Beginner)
+3. Student's interests alignment
+4. Specific grades in relevant subjects
+
+Provide your response as a JSON array with exactly 3 recommendations, ordered by match score (highest first):
+
 [
   {
     "projectId": 1,
-    "projectTitle": "exact title",
+    "projectTitle": "exact project title from list above",
     "matchScore": 0.95,
-    "reason": "specific reason mentioning grades"
+    "reason": "Specific reason mentioning student's grades and strengths. For example: 'Your excellent grade in Artificial Intelligence (A, 88%) demonstrates strong expertise needed for this project.'"
   }
-]"""
+]
+
+IMPORTANT: 
+- Use ONLY project IDs and titles from the list above
+- Match scores should be between 0.60 and 0.98 (be realistic)
+- Reasons must be specific and reference actual student grades/subjects
+- Return ONLY the JSON array, no other text"""
   }
   
-  private def callOpenAIAPI(prompt: String): String = {
-    val escapedPrompt = prompt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "")
+  private def callClaudeAPI(prompt: String): String = {
+    val escapedPrompt = prompt
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+      .replace("\n", "\\n")
+      .replace("\r", "")
+      .replace("\t", "\\t")
     
     val requestBody = s"""{
-      "model": "gpt-3.5-turbo",
+      "model": "claude-sonnet-4-20250514",
+      "max_tokens": 2000,
       "messages": [
-        {
-          "role": "system",
-          "content": "You are an academic advisor. Always respond with valid JSON only."
-        },
         {
           "role": "user",
           "content": "$escapedPrompt"
         }
-      ],
-      "temperature": 0.7,
-      "max_tokens": 1500
+      ]
     }"""
     
     val request = HttpRequest.newBuilder()
-      .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+      .uri(URI.create("https://api.anthropic.com/v1/messages"))
       .header("Content-Type", "application/json")
-      .header("Authorization", s"Bearer $apiKey")
+      .header("x-api-key", apiKey)
+      .header("anthropic-version", "2023-06-01")
       .POST(HttpRequest.BodyPublishers.ofString(requestBody))
       .build()
     
-    println("Calling OpenAI API...")
+    println("Calling Claude API...")
     val response = client.send(request, HttpResponse.BodyHandlers.ofString())
     
-    println(s"OpenAI Status: ${response.statusCode()}")
+    println(s"Claude API Status: ${response.statusCode()}")
     
     if (response.statusCode() == 200) {
       val jsonResponse = mapper.readTree(response.body())
-      val content = jsonResponse.get("choices").get(0).get("message").get("content").asText()
+      val content = jsonResponse.get("content").get(0).get("text").asText()
       
-      println(s"OpenAI Response: ${content.take(200)}...")
+      println(s"Claude Response: ${content.take(200)}...")
       
       val jsonStart = content.indexOf("[")
       val jsonEnd = content.lastIndexOf("]") + 1
@@ -137,10 +154,12 @@ Return ONLY a JSON array (no markdown, no extra text):
       if (jsonStart >= 0 && jsonEnd > jsonStart) {
         content.substring(jsonStart, jsonEnd)
       } else {
+        println("Warning: Could not find JSON array in response")
         content
       }
     } else {
-      println(s"OpenAI error: ${response.body()}")
+      println(s"Claude API error: ${response.statusCode()}")
+      println(s"Response: ${response.body()}")
       throw new Exception(s"API returned ${response.statusCode()}")
     }
   }
@@ -165,19 +184,19 @@ Return ONLY a JSON array (no markdown, no extra text):
         recommendations += ProjectRecommendation(projectId, title, score, reason)
       }
       
-      println(s"Parsed ${recommendations.size} recommendations")
+      println(s"Successfully parsed ${recommendations.size} recommendations")
       recommendations.toList.take(3)
       
     } catch {
       case e: Exception =>
-        println(s"Parse error: ${e.getMessage}")
+        println(s"Error parsing recommendations: ${e.getMessage}")
         e.printStackTrace()
         getRuleBasedRecommendations(student, projects)
     }
   }
   
   /**
-   * Rule-based recommendation algorithm (no API needed)
+   * Fallback: Rule-based recommendation algorithm (no API needed)
    */
   private def getRuleBasedRecommendations(
     student: StudentProfile,

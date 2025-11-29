@@ -1,0 +1,166 @@
+package org.example.services
+
+import org.springframework.stereotype.Service
+import org.springframework.beans.factory.annotation.Autowired
+import org.example.repositories.{RealStudentRepository, RealSubjectRepository}
+import org.example.models.{RealStudent, RealSubject}
+import scala.jdk.CollectionConverters._
+
+@Service
+class StudentDataService {
+
+  @Autowired
+  private var studentRepository: RealStudentRepository = _
+  
+  @Autowired
+  private var subjectRepository: RealSubjectRepository = _
+
+  /**
+   * Get student by ID from Cassandra
+   */
+  def getStudentById(studentId: Int): Option[RealStudent] = {
+    val result = studentRepository.findById(studentId)
+    if (result.isPresent) Some(result.get()) else None
+  }
+
+  /**
+   * Build StudentProfile for AI recommendations from real Cassandra data
+   */
+  def buildStudentProfile(studentId: Int): Option[StudentProfile] = {
+    getStudentById(studentId).map { student =>
+      
+      // Get all subjects from database
+      val allSubjects = subjectRepository.findAll().asScala.toList
+      
+      // Filter subjects that belong to this student's program
+      // (Assuming subjects are linked by programmeCode)
+      val studentSubjects = allSubjects
+        .filter(s => s.programmeCode == student.programmeCode)
+        .filter(s => s.grade != null && s.overallPercentage != null)
+        .sortBy(-_.overallPercentage.doubleValue())
+        .take(10) // Top 10 subjects
+      
+      // Convert to SubjectGrade format for AI
+      val topSubjects = studentSubjects.map(s =>
+        SubjectGrade(
+          subjectName = s.subjectName,
+          grade = s.grade,
+          percentage = if (s.overallPercentage != null) s.overallPercentage.doubleValue() else 0.0
+        )
+      ).take(5) // Top 5 for AI recommendation
+      
+      // Extract interests from subject names (basic heuristic)
+      val interests = extractInterests(studentSubjects)
+      
+      StudentProfile(
+        id = student.id,
+        name = if (student.name != null) student.name else s"Student ${student.id}",
+        cgpa = if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 3.0,
+        topSubjects = topSubjects,
+        interests = interests
+      )
+    }
+  }
+  
+  /**
+   * Extract likely interests from subject performance
+   */
+  private def extractInterests(subjects: List[RealSubject]): String = {
+    val keywords = Map(
+      "AI" -> List("artificial intelligence", "machine learning", "deep learning", "neural"),
+      "Web Development" -> List("web", "internet", "html", "javascript", "frontend", "backend"),
+      "Mobile Development" -> List("mobile", "android", "ios", "app development"),
+      "Database" -> List("database", "sql", "data management"),
+      "Security" -> List("security", "cryptography", "cyber"),
+      "Blockchain" -> List("blockchain", "distributed"),
+      "Cloud" -> List("cloud", "aws", "azure"),
+      "Data Science" -> List("data science", "analytics", "statistics", "data mining")
+    )
+    
+    val subjectNames = subjects.map(_.subjectName.toLowerCase)
+    
+    val matchedInterests = keywords.filter { case (interest, keywordList) =>
+      keywordList.exists(keyword => subjectNames.exists(_.contains(keyword)))
+    }.keys.toList
+    
+    if (matchedInterests.nonEmpty) {
+      matchedInterests.take(3).mkString(", ")
+    } else {
+      "Software Engineering, Programming"
+    }
+  }
+  
+  /**
+   * Get performance data for frontend dashboard
+   */
+  def getStudentPerformance(studentId: Int): Option[Map[String, Any]] = {
+    getStudentById(studentId).map { student =>
+      
+      // Get student's subjects
+      val allSubjects = subjectRepository.findAll().asScala.toList
+      val studentSubjects = allSubjects
+        .filter(s => s.programmeCode == student.programmeCode)
+        .filter(s => s.grade != null)
+      
+      // Calculate competencies from subjects
+      val competencies = calculateCompetencies(studentSubjects)
+      
+      // Get recent grades
+      val recentGrades = studentSubjects
+        .sortBy(s => (s.examYear, s.examMonth))
+        .reverse
+        .take(5)
+        .map(s => Map(
+          "course" -> s"${s.subjectCode} - ${s.subjectName}",
+          "grade" -> s.grade,
+          "semester" -> s"${s.examMonth} ${s.examYear}"
+        ))
+      
+      Map(
+        "studentId" -> studentId,
+        "gpa" -> (if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 3.0),
+        "completedCourses" -> studentSubjects.size,
+        "competencies" -> competencies,
+        "grades" -> recentGrades
+      )
+    }
+  }
+  
+  /**
+   * Calculate competencies from subjects
+   */
+  private def calculateCompetencies(subjects: List[RealSubject]): List[Map[String, Any]] = {
+    val competencyAreas = Map(
+      "Programming" -> List("programming", "java", "python", "c++", "code", "software"),
+      "Artificial Intelligence" -> List("ai", "artificial intelligence", "machine learning", "neural"),
+      "Web Development" -> List("web", "html", "css", "javascript", "internet"),
+      "Database Management" -> List("database", "sql", "data management"),
+      "Mobile Development" -> List("mobile", "android", "ios", "app"),
+      "Data Science" -> List("data science", "analytics", "statistics", "data mining")
+    )
+    
+    competencyAreas.map { case (competency, keywords) =>
+      val matchingSubjects = subjects.filter(s =>
+        keywords.exists(kw => s.subjectName.toLowerCase.contains(kw))
+      )
+      
+      if (matchingSubjects.nonEmpty) {
+        val avgScore = matchingSubjects.map(s => 
+          if (s.overallPercentage != null) s.overallPercentage.doubleValue() else 0.0
+        ).sum / matchingSubjects.size
+        
+        val level = if (avgScore >= 85) "Advanced"
+                   else if (avgScore >= 70) "Intermediate"
+                   else "Beginner"
+        
+        Some(Map(
+          "name" -> competency,
+          "level" -> level,
+          "score" -> avgScore.toInt
+        ))
+      } else {
+        None
+      }
+    }.flatten.toList.sortBy(m => -m("score").asInstanceOf[Int]).take(5)
+  }
+}

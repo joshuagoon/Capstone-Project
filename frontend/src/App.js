@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { getAllStudents, getStudentPerformance, getRecommendations } from './services/api';
+import { getAllStudents, getStudentPerformance, getAIRecommendations } from './services/api';
 
 function App() {
   const [students, setStudents] = useState([]);
@@ -42,7 +42,7 @@ function App() {
       setPerformance(perfResponse.data);
 
       // Fetch recommendations
-      const recResponse = await getRecommendations(studentId);
+      const recResponse = await getAIRecommendations(studentId);
       setRecommendations(recResponse.data);
     } catch (err) {
       setError('Failed to fetch student data');

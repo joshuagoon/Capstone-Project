@@ -2,12 +2,42 @@ package org.example.controllers
 
 import org.springframework.web.bind.annotation._
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.ResponseEntity
-import org.example.services.{AIRecommendationService, StudentProfile, SubjectGrade, ProjectRecommendation}
+import org.springframework.http.{ResponseEntity, HttpStatus}
+import org.example.services.{AIRecommendationService, StudentDataService, StudentProfile}
 import org.example.data.CapstoneProjects
+import org.example.repositories.RealStudentRepository
 import scala.beans.BeanProperty
+import scala.jdk.CollectionConverters._
 
-// Response class for API
+// Student response for API
+class StudentResponse(
+  @BeanProperty var studentId: Int,
+  @BeanProperty var name: String,
+  @BeanProperty var email: String,
+  @BeanProperty var program: String,
+  @BeanProperty var cohort: Int,
+  @BeanProperty var cgpa: Double
+) {
+  def this() = this(0, "", "", "", 0, 0.0)
+}
+
+// Login request
+class LoginRequest(
+  @BeanProperty var studentId: Int
+) {
+  def this() = this(0)
+}
+
+// Login response
+class LoginResponse(
+  @BeanProperty var success: Boolean,
+  @BeanProperty var message: String,
+  @BeanProperty var student: StudentResponse
+) {
+  def this() = this(false, "", null)
+}
+
+// Recommendation response
 class RecommendationResponse(
   @BeanProperty var projectId: Int,
   @BeanProperty var projectTitle: String,
@@ -17,6 +47,18 @@ class RecommendationResponse(
   def this() = this(0, "", 0.0, "")
 }
 
+// Project response
+class ProjectResponse(
+  @BeanProperty var projectId: Int,
+  @BeanProperty var title: String,
+  @BeanProperty var description: String,
+  @BeanProperty var difficultyLevel: String,
+  @BeanProperty var requiredSkills: java.util.List[String],
+  @BeanProperty var supervisor: String
+) {
+  def this() = this(0, "", "", "", new java.util.ArrayList[String](), "")
+}
+
 @RestController
 @RequestMapping(Array("/api"))
 @CrossOrigin(origins = Array("http://localhost:3000"))
@@ -24,33 +66,138 @@ class AIRecommendationController {
 
   @Autowired
   private var aiService: AIRecommendationService = _
+  
+  @Autowired
+  private var studentDataService: StudentDataService = _
+  
+  @Autowired
+  private var studentRepository: RealStudentRepository = _
 
-  @GetMapping(Array("/ai-recommendations/{studentId}"))
-  def getAIRecommendations(@PathVariable studentId: Int): java.util.List[RecommendationResponse] = {
-    import scala.jdk.CollectionConverters._
+  /**
+   * Login endpoint - verify student ID exists
+   */
+  @PostMapping(Array("/login"))
+  def login(@RequestBody loginRequest: LoginRequest): ResponseEntity[LoginResponse] = {
+    val studentId = loginRequest.studentId
     
+    println(s"Login attempt for student ID: $studentId")
+    
+    studentDataService.getStudentById(studentId) match {
+      case Some(student) =>
+        val response = new LoginResponse(
+          success = true,
+          message = "Login successful",
+          student = new StudentResponse(
+            studentId = student.id,
+            name = if (student.name != null) student.name else s"Student ${student.id}",
+            email = s"student${student.id}@sunway.edu.my",
+            program = if (student.programme != null) student.programme else "Computer Science",
+            cohort = student.cohort,
+            cgpa = if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0
+          )
+        )
+        ResponseEntity.ok(response)
+        
+      case None =>
+        val response = new LoginResponse(
+          success = false,
+          message = s"Student ID ${studentId} not found",
+          student = null
+        )
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(response)
+    }
+  }
+
+  /**
+   * Get student by ID
+   */
+  @GetMapping(Array("/students/{id}"))
+  def getStudentById(@PathVariable id: Int): ResponseEntity[StudentResponse] = {
+    studentDataService.getStudentById(id) match {
+      case Some(student) =>
+        val response = new StudentResponse(
+          studentId = student.id,
+          name = if (student.name != null) student.name else s"Student ${student.id}",
+          email = s"student${student.id}@sunway.edu.my",
+          program = if (student.programme != null) student.programme else "Computer Science",
+          cohort = student.cohort,
+          cgpa = if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0
+        )
+        ResponseEntity.ok(response)
+        
+      case None =>
+        ResponseEntity.notFound().build()
+    }
+  }
+
+  /**
+   * Get student performance data from real Cassandra database
+   */
+  @GetMapping(Array("/performance/{studentId}"))
+  def getStudentPerformance(@PathVariable studentId: Int): ResponseEntity[java.util.Map[String, Any]] = {
+    println(s"Fetching performance for student ID: $studentId")
+    
+    studentDataService.getStudentPerformance(studentId) match {
+      case Some(perfMap) =>
+        val javaMap = new java.util.HashMap[String, Any]()
+        perfMap.foreach { case (k, v) =>
+          v match {
+            case list: List[_] => 
+              val javaList = new java.util.ArrayList[Any]()
+              list.foreach {
+                case map: Map[_, _] =>
+                  val innerMap = new java.util.HashMap[String, Any]()
+                  map.asInstanceOf[Map[String, Any]].foreach { case (ik, iv) =>
+                    innerMap.put(ik, iv)
+                  }
+                  javaList.add(innerMap)
+                case other => javaList.add(other)
+              }
+              javaMap.put(k, javaList)
+            case other => javaMap.put(k, other)
+          }
+        }
+        ResponseEntity.ok(javaMap)
+        
+      case None =>
+        val errorMap = new java.util.HashMap[String, Any]()
+        errorMap.put("error", s"Student $studentId not found")
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMap)
+    }
+  }
+
+  /**
+   * Get AI-powered recommendations using REAL student data from Cassandra
+   */
+  @GetMapping(Array("/ai-recommendations/{studentId}"))
+  def getAIRecommendations(@PathVariable studentId: Int): ResponseEntity[java.util.List[RecommendationResponse]] = {
     println(s"Fetching AI recommendations for student ID: $studentId")
     
-    // TODO: In next phase, fetch real student data from Cassandra
-    // For now, using mock data based on student ID
-    val studentProfile = getMockStudentProfile(studentId)
-    
-    // Get all available projects
-    val availableProjects = CapstoneProjects.getAll
-    
-    // Get AI recommendations
-    val recommendations = aiService.generateRecommendations(studentProfile, availableProjects)
-    
-    // Convert to response format
-    recommendations.map(rec => 
-      new RecommendationResponse(rec.projectId, rec.projectTitle, rec.matchScore, rec.reason)
-    ).asJava
+    studentDataService.buildStudentProfile(studentId) match {
+      case Some(studentProfile) =>
+        println(s"Built profile for ${studentProfile.name} with CGPA ${studentProfile.cgpa}")
+        println(s"Top subjects: ${studentProfile.topSubjects.map(_.subjectName).mkString(", ")}")
+        
+        val availableProjects = CapstoneProjects.getAll
+        val recommendations = aiService.generateRecommendations(studentProfile, availableProjects)
+        
+        val response = recommendations.map(rec => 
+          new RecommendationResponse(rec.projectId, rec.projectTitle, rec.matchScore, rec.reason)
+        ).asJava
+        
+        ResponseEntity.ok(response)
+        
+      case None =>
+        println(s"Student $studentId not found in database")
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(java.util.Collections.emptyList[RecommendationResponse]())
+    }
   }
   
+  /**
+   * Get all available capstone projects
+   */
   @GetMapping(Array("/projects"))
   def getAllProjects(): java.util.List[ProjectResponse] = {
-    import scala.jdk.CollectionConverters._
-    
     CapstoneProjects.getAll.map(p =>
       new ProjectResponse(
         p.id,
@@ -63,10 +210,11 @@ class AIRecommendationController {
     ).asJava
   }
   
+  /**
+   * Get project by ID
+   */
   @GetMapping(Array("/projects/{id}"))
   def getProjectById(@PathVariable id: Int): ResponseEntity[ProjectResponse] = {
-    import scala.jdk.CollectionConverters._
-    
     CapstoneProjects.getById(id) match {
       case Some(p) => ResponseEntity.ok(new ProjectResponse(
         p.id, p.title, p.description, p.difficultyLevel, 
@@ -76,71 +224,24 @@ class AIRecommendationController {
     }
   }
   
-  // Mock student profiles - replace with Cassandra queries later
-  private def getMockStudentProfile(studentId: Int): StudentProfile = {
-    studentId match {
-      case 1 => StudentProfile(
-        id = 1,
-        name = "Alice Wong",
-        cgpa = 3.82,
-        topSubjects = List(
-          SubjectGrade("Artificial Intelligence", "A", 88.5),
-          SubjectGrade("Machine Learning", "A-", 85.0),
-          SubjectGrade("Web Development", "B+", 82.0),
-          SubjectGrade("Database Systems", "A", 87.5)
-        ),
-        interests = "AI, Machine Learning, Data Science"
-      )
-      
-      case 2 => StudentProfile(
-        id = 2,
-        name = "Bob Tan",
-        cgpa = 3.45,
-        topSubjects = List(
-          SubjectGrade("Mobile Development", "A-", 85.0),
-          SubjectGrade("User Interface Design", "A", 88.0),
-          SubjectGrade("Cloud Computing", "B+", 83.5),
-          SubjectGrade("Software Engineering", "B+", 82.0)
-        ),
-        interests = "Mobile Apps, Cloud Computing, UI/UX"
-      )
-      
-      case 3 => StudentProfile(
-        id = 3,
-        name = "Charlie Lee",
-        cgpa = 3.92,
-        topSubjects = List(
-          SubjectGrade("Blockchain Technology", "A", 92.0),
-          SubjectGrade("Cryptography", "A", 90.5),
-          SubjectGrade("Artificial Intelligence", "A-", 87.0),
-          SubjectGrade("Advanced Algorithms", "A", 89.0)
-        ),
-        interests = "Blockchain, Security, Cryptography"
-      )
-      
-      case _ => StudentProfile(
-        id = studentId,
-        name = "Student " + studentId,
-        cgpa = 3.50,
-        topSubjects = List(
-          SubjectGrade("Programming Fundamentals", "B+", 82.0),
-          SubjectGrade("Data Structures", "B", 78.5),
-          SubjectGrade("Web Development", "A-", 85.0)
-        ),
-        interests = "Web Development, Software Engineering"
-      )
+  /**
+   * Health check endpoint
+   */
+  @GetMapping(Array("/health"))
+  def health(): java.util.Map[String, String] = {
+    val healthMap = new java.util.HashMap[String, String]()
+    healthMap.put("status", "UP")
+    healthMap.put("database", "connected")
+    
+    try {
+      val count = studentRepository.count()
+      healthMap.put("studentCount", count.toString)
+    } catch {
+      case e: Exception =>
+        healthMap.put("database", "error")
+        healthMap.put("error", e.getMessage)
     }
+    
+    healthMap
   }
-}
-
-// Response class for projects
-class ProjectResponse(
-  @BeanProperty var projectId: Int,
-  @BeanProperty var title: String,
-  @BeanProperty var description: String,
-  @BeanProperty var difficultyLevel: String,
-  @BeanProperty var requiredSkills: java.util.List[String],
-  @BeanProperty var supervisor: String
-) {
-  def this() = this(0, "", "", "", new java.util.ArrayList[String](), "")
 }

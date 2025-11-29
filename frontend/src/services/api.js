@@ -19,6 +19,6 @@ export const getAllProjects = () => api.get('/projects');
 export const getProjectById = (id) => api.get(`/projects/${id}`);
 
 // Recommendation API calls
-export const getRecommendations = (studentId) => api.get(`/recommendations/${studentId}`);
+export const getAIRecommendations = (studentId) => api.get(`/ai-recommendations/${studentId}`);
 
 export default api;
