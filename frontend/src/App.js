@@ -1,47 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { getAllStudents, getStudentPerformance, getAIRecommendations } from './services/api';
+import Login from './components/Login';
+import { getStudentPerformance, getAIRecommendations } from './services/api';
 
 function App() {
-  const [students, setStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [currentStudent, setCurrentStudent] = useState(null);
   const [performance, setPerformance] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  const fetchStudents = async () => {
-    try {
-      setLoading(true);
-      const response = await getAllStudents();
-      setStudents(response.data);
-      // Automatically select first student
-      if (response.data.length > 0) {
-        selectStudent(response.data[0].studentId);
-      }
-    } catch (err) {
-      setError('Failed to fetch students. Make sure backend is running on port 8080.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  // Handle successful login
+  const handleLoginSuccess = async (student) => {
+    setCurrentStudent(student);
+    await fetchStudentData(student.studentId);
   };
 
-  const selectStudent = async (studentId) => {
+  // Fetch student performance and recommendations
+  const fetchStudentData = async (studentId) => {
     try {
       setLoading(true);
-      const student = students.find(s => s.studentId === studentId);
-      setSelectedStudent(student);
+      setError(null);
 
       // Fetch performance data
       const perfResponse = await getStudentPerformance(studentId);
       setPerformance(perfResponse.data);
 
-      // Fetch recommendations
+      // Fetch AI recommendations
       const recResponse = await getAIRecommendations(studentId);
       setRecommendations(recResponse.data);
     } catch (err) {
@@ -52,71 +37,77 @@ function App() {
     }
   };
 
-  if (loading && students.length === 0) {
+  // Logout function
+  const handleLogout = () => {
+    setCurrentStudent(null);
+    setPerformance(null);
+    setRecommendations([]);
+    setError(null);
+  };
+
+  // If not logged in, show login page
+  if (!currentStudent) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show loading state
+  if (loading) {
     return (
       <div className="App">
-        <div className="loading">Loading...</div>
+        <div className="loading">Loading student data...</div>
       </div>
     );
   }
 
+  // Show error state
   if (error) {
     return (
       <div className="App">
         <div className="error">{error}</div>
+        <button onClick={handleLogout}>Back to Login</button>
       </div>
     );
   }
 
+  // Main dashboard
   return (
     <div className="App">
       <header className="App-header">
         <h1>Student Performance Tracker & Capstone Recommender</h1>
+        <button onClick={handleLogout} className="logout-button">
+          Logout
+        </button>
       </header>
 
       <div className="container">
-        {/* Student Selector */}
-        <div className="student-selector">
-          <h2>Select Student</h2>
-          <select 
-            onChange={(e) => selectStudent(parseInt(e.target.value))}
-            value={selectedStudent?.studentId || ''}
-          >
-            {students.map(student => (
-              <option key={student.studentId} value={student.studentId}>
-                {student.name}
-              </option>
-            ))}
-          </select>
+        {/* Student Info */}
+        <div className="student-info card">
+          <h2>Student Profile</h2>
+          <p><strong>Student ID:</strong> {currentStudent.studentId}</p>
+          <p><strong>Name:</strong> {currentStudent.name}</p>
+          <p><strong>Email:</strong> {currentStudent.email}</p>
+          <p><strong>Program:</strong> {currentStudent.program}</p>
+          <p><strong>Cohort:</strong> {currentStudent.cohort}</p>
+          <p><strong>Overall CGPA:</strong> {currentStudent.cgpa.toFixed(2)}</p>
         </div>
 
-        {selectedStudent && (
-          <>
-            {/* Student Info */}
-            <div className="student-info card">
-              <h2>Student Profile</h2>
-              <p><strong>Name:</strong> {selectedStudent.name}</p>
-              <p><strong>Email:</strong> {selectedStudent.email}</p>
-              <p><strong>Program:</strong> {selectedStudent.program}</p>
-              <p><strong>Year:</strong> {selectedStudent.enrolmentYear}</p>
-              <p><strong>Interests:</strong> {selectedStudent.interests}</p>
+        {/* Performance Dashboard */}
+        {performance && (
+          <div className="performance card">
+            <h2>Academic Performance</h2>
+            <div className="stats">
+              <div className="stat">
+                <span className="stat-label">CGPA</span>
+                <span className="stat-value">{performance.gpa.toFixed(2)}</span>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Completed Courses</span>
+                <span className="stat-value">{performance.completedCourses}</span>
+              </div>
             </div>
 
-            {/* Performance Dashboard */}
-            {performance && (
-              <div className="performance card">
-                <h2>Academic Performance</h2>
-                <div className="stats">
-                  <div className="stat">
-                    <span className="stat-label">GPA</span>
-                    <span className="stat-value">{performance.gpa}</span>
-                  </div>
-                  <div className="stat">
-                    <span className="stat-label">Completed Courses</span>
-                    <span className="stat-value">{performance.completedCourses}</span>
-                  </div>
-                </div>
-
+            {performance.competencies && performance.competencies.length > 0 && (
+              <>
                 <h3>Competencies</h3>
                 <div className="competencies">
                   {performance.competencies.map((comp, index) => (
@@ -135,7 +126,11 @@ function App() {
                     </div>
                   ))}
                 </div>
+              </>
+            )}
 
+            {performance.grades && performance.grades.length > 0 && (
+              <>
                 <h3>Recent Grades</h3>
                 <table className="grades-table">
                   <thead>
@@ -155,32 +150,32 @@ function App() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </>
             )}
-
-            {/* Recommendations */}
-            <div className="recommendations card">
-              <h2>Recommended Capstone Projects</h2>
-              {recommendations.length > 0 ? (
-                <div className="recommendation-list">
-                  {recommendations.map((rec, index) => (
-                    <div key={index} className="recommendation-item">
-                      <div className="rec-header">
-                        <h3>{rec.projectTitle}</h3>
-                        <span className="confidence-score">
-                          {(rec.score * 100).toFixed(0)}% match
-                        </span>
-                      </div>
-                      <p className="reason">{rec.reason}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p>No recommendations available</p>
-              )}
-            </div>
-          </>
+          </div>
         )}
+
+        {/* AI Recommendations */}
+        <div className="recommendations card">
+          <h2>AI-Recommended Capstone Projects</h2>
+          {recommendations && recommendations.length > 0 ? (
+            <div className="recommendation-list">
+              {recommendations.map((rec, index) => (
+                <div key={index} className="recommendation-item">
+                  <div className="rec-header">
+                    <h3>{rec.projectTitle}</h3>
+                    <span className="confidence-score">
+                      {(rec.score * 100).toFixed(0)}% match
+                    </span>
+                  </div>
+                  <p className="reason">{rec.reason}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No recommendations available for this student.</p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,12 @@
 package org.example.repositories
 
-import org.example.models.RealSubject
-import org.springframework.data.cassandra.repository.CassandraRepository
-import org.springframework.data.cassandra.repository.Query
+import org.springframework.data.cassandra.repository.{CassandraRepository, Query}
 import org.springframework.stereotype.Repository
+import org.example.models.RealSubject
 
 @Repository
 trait RealSubjectRepository extends CassandraRepository[RealSubject, Int] {
   
-  // Find subjects by student ID (from subjects field mapping)
-  // Note: This might need custom implementation based on your data structure
+  @Query("SELECT * FROM subjects WHERE id = ?0 ALLOW FILTERING")
+  def findByStudentId(studentId: Int): java.util.List[RealSubject]
 }

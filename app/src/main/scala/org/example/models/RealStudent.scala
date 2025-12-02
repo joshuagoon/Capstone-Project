@@ -35,9 +35,6 @@ class RealStudent {
   @BeanProperty
   var graduated: Boolean = _
   
-  @BeanProperty
-  var subjects: String = _ // JSON string or comma-separated
-  
   @Column("yearonecgpa")
   @BeanProperty
   var yearOneCgpa: java.lang.Double = _

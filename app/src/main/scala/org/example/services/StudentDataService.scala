@@ -30,12 +30,10 @@ class StudentDataService {
     getStudentById(studentId).map { student =>
       
       // Get all subjects from database
-      val allSubjects = subjectRepository.findAll().asScala.toList
-      
-      // Filter subjects that belong to this student's program
-      // (Assuming subjects are linked by programmeCode)
-      val studentSubjects = allSubjects
-        .filter(s => s.programmeCode == student.programmeCode)
+      val studentSubjects = subjectRepository
+        .findByStudentId(studentId)
+        .asScala
+        .toList
         .filter(s => s.grade != null && s.overallPercentage != null)
         .sortBy(-_.overallPercentage.doubleValue())
         .take(10) // Top 10 subjects
@@ -97,9 +95,10 @@ class StudentDataService {
     getStudentById(studentId).map { student =>
       
       // Get student's subjects
-      val allSubjects = subjectRepository.findAll().asScala.toList
-      val studentSubjects = allSubjects
-        .filter(s => s.programmeCode == student.programmeCode)
+      val studentSubjects = subjectRepository
+        .findByStudentId(studentId)
+        .asScala
+        .toList
         .filter(s => s.grade != null)
       
       // Calculate competencies from subjects
@@ -107,7 +106,10 @@ class StudentDataService {
       
       // Get recent grades
       val recentGrades = studentSubjects
-        .sortBy(s => (s.examYear, s.examMonth))
+        .sortBy(s => (
+          s.examYear,
+          s.examMonth.toIntOption.getOrElse(0)  // Convert String to Int for proper sorting
+        ))
         .reverse
         .take(5)
         .map(s => Map(
