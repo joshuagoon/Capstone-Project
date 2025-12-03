@@ -10,6 +10,25 @@ function Recommendations({ studentId, onBack }) {
   const [regeneratingIndex, setRegeneratingIndex] = useState(null);
   const [error, setError] = useState(null);
 
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
+    if (savedFavorites) {
+      try {
+        setFavorites(JSON.parse(savedFavorites));
+      } catch (e) {
+        console.error('Failed to load favorites:', e);
+      }
+    }
+  }, [studentId]);
+
+  // Save favorites to localStorage whenever they change
+  useEffect(() => {
+    if (favorites.length >= 0) {
+      localStorage.setItem(`favorites_${studentId}`, JSON.stringify(favorites));
+    }
+  }, [favorites, studentId]);
+
   // Fetch recommendations on component mount
   useEffect(() => {
     fetchRecommendations();
@@ -109,6 +128,13 @@ function Recommendations({ studentId, onBack }) {
     }
   };
 
+  const handleClearFavorites = () => {
+    if (window.confirm('Are you sure you want to clear all favorites?')) {
+      setFavorites([]);
+      localStorage.removeItem(`favorites_${studentId}`);
+    }
+  };
+
   if (loading && displayedRecommendations.length === 0) {
     return (
       <div className="recommendations-page">
@@ -132,7 +158,12 @@ function Recommendations({ studentId, onBack }) {
       {favorites.length > 0 && (
         <div className="favorites-section">
           <h2>⭐ Your Favorites ({favorites.length})</h2>
-          <p className="favorites-hint">You've favorited {favorites.length} project{favorites.length !== 1 ? 's' : ''}</p>
+          <p className="favorites-hint">
+            You've favorited {favorites.length} project{favorites.length !== 1 ? 's' : ''}
+          </p>
+          <button onClick={handleClearFavorites} className="clear-favorites-button">
+            Clear All Favorites
+          </button>
         </div>
       )}
 

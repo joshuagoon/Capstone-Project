@@ -239,3 +239,20 @@
     gap: 1.5rem;
   }
 }
+
+.clear-favorites-button {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: all 0.3s;
+}
+
+.clear-favorites-button:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+}
