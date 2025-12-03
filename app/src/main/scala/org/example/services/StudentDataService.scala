@@ -53,7 +53,7 @@ class StudentDataService {
       StudentProfile(
         id = student.id,
         name = if (student.name != null) student.name else s"Student ${student.id}",
-        cgpa = if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 3.0,
+        cgpa = if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0,
         topSubjects = topSubjects,
         interests = interests
       )
@@ -65,14 +65,16 @@ class StudentDataService {
    */
   private def extractInterests(subjects: List[RealSubject]): String = {
     val keywords = Map(
-      "AI" -> List("artificial intelligence", "machine learning", "deep learning", "neural"),
-      "Web Development" -> List("web", "internet", "html", "javascript", "frontend", "backend"),
-      "Mobile Development" -> List("mobile", "android", "ios", "app development"),
-      "Database" -> List("database", "sql", "data management"),
-      "Security" -> List("security", "cryptography", "cyber"),
-      "Blockchain" -> List("blockchain", "distributed"),
-      "Cloud" -> List("cloud", "aws", "azure"),
-      "Data Science" -> List("data science", "analytics", "statistics", "data mining")
+      "Artificial Intelligence" -> List("artificial intelligence", "machine learning", "computational intelligence", "computer vision", "neural"),
+      "Web Development" -> List("web", "html", "javascript", "internet", "frontend", "backend"),
+      "Mobile Development" -> List("mobile", "android", "ios", "app development", "application development"),
+      "Data Science & Analytics" -> List("data science", "analytics", "statistics", "data mining", "business intelligence", "big data"),
+      "Cybersecurity" -> List("security", "cryptography", "cyber", "hacking", "forensic", "ethical hacking"),
+      "Database Systems" -> List("database", "sql", "data management", "information systems"),
+      "Software Engineering" -> List("software engineering", "software architecture", "design pattern", "testing", "capstone"),
+      "Networks" -> List("network", "distributed systems", "communication systems"),
+      "Cloud Computing" -> List("cloud", "aws", "azure"),
+      "UI/UX Design" -> List("ui/ux", "user interface", "design thinking", "multimedia", "human computer interaction")
     )
     
     val subjectNames = subjects.map(_.subjectName.toLowerCase)
@@ -122,7 +124,7 @@ class StudentDataService {
       
       Map(
         "studentId" -> studentId,
-        "gpa" -> (if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 3.0),
+        "gpa" -> (if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0),
         "completedCourses" -> studentSubjects.size,
         "competencies" -> competencies,
         "grades" -> recentGrades
@@ -205,8 +207,9 @@ class StudentDataService {
           if (s.overallPercentage != null) s.overallPercentage.doubleValue() else 0.0
         ).sum / matchingSubjects.size
         
-        val level = if (avgScore >= 85) "Advanced"
-                  else if (avgScore >= 70) "Intermediate"
+        val level = if (avgScore >= 90) "Expert"
+                  else if (avgScore >= 75) "Advanced"
+                  else if (avgScore >= 60) "Intermediate"
                   else "Beginner"
         
         Some(Map(

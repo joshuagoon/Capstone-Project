@@ -72,12 +72,25 @@ class AIRecommendationService {
       s"  • ${s.subjectName}: ${s.grade} (${s.percentage}%)"
     ).mkString("\n")
     
+    // Build CGPA section conditionally
+    val cgpaSection = if (student.cgpa > 0.0) {
+      s"- Overall CGPA: ${student.cgpa}\n"
+    } else {
+      "" // Don't mention CGPA if it's 0.0
+    }
+    
+    // Difficulty guidance based on CGPA (only if CGPA exists)
+    val difficultyGuidance = if (student.cgpa > 0.0) {
+      s"2. Appropriate difficulty level based on CGPA (3.5+ = Advanced, 3.0-3.5 = Intermediate, <3.0 = Beginner)\n"
+    } else {
+      "2. Appropriate difficulty level based on subject performance\n"
+    }
+    
     s"""You are an academic advisor helping a computer science student choose the most suitable capstone project.
 
 Student Profile:
 - Name: ${student.name}
-- Overall CGPA: ${student.cgpa}
-- Top Subject Performances:
+$cgpaSection- Top Subject Performances:
 $subjectsList
 ${if (student.interests.nonEmpty) s"- Stated Interests: ${student.interests}" else ""}
 
@@ -88,8 +101,7 @@ Task: Recommend the TOP 3 most suitable capstone projects for this student.
 
 For each recommendation, consider:
 1. Match between student's strong subjects and project's required skills
-2. Appropriate difficulty level based on CGPA (3.5+ = Advanced, 3.0-3.5 = Intermediate, <3.0 = Beginner)
-3. Student's interests alignment
+$difficultyGuidance3. Student's interests alignment
 4. Specific grades in relevant subjects
 
 Provide your response as a JSON array with exactly 3 recommendations, ordered by match score (highest first):
@@ -107,7 +119,7 @@ IMPORTANT:
 - Use ONLY project IDs and titles from the list above
 - Match scores should be between 0.60 and 0.98 (be realistic)
 - Reasons must be specific and reference actual student grades/subjects
-- Return ONLY the JSON array, no other text"""
+${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not available\n" else ""}- Return ONLY the JSON array, no other text"""
   }
   
   private def callClaudeAPI(prompt: String): String = {
@@ -209,18 +221,41 @@ IMPORTANT:
       var score = 0.0
       val reasons = scala.collection.mutable.ListBuffer[String]()
       
-      // 1. Difficulty matching (30% weight)
-      val difficultyMatch = project.difficultyLevel.toLowerCase match {
-        case "beginner" if student.cgpa < 3.0 => 0.3
-        case "intermediate" if student.cgpa >= 3.0 && student.cgpa < 3.6 => 0.3
-        case "advanced" if student.cgpa >= 3.6 => 0.3
-        case "intermediate" if student.cgpa >= 2.5 => 0.2
-        case _ => 0.1
+      // 1. Difficulty matching (30% weight) - adjusted for missing CGPA
+      val difficultyMatch = if (student.cgpa > 0.0) {
+        // Use CGPA if available
+        project.difficultyLevel.toLowerCase match {
+          case "beginner" if student.cgpa < 3.0 => 0.3
+          case "intermediate" if student.cgpa >= 3.0 && student.cgpa < 3.6 => 0.3
+          case "advanced" if student.cgpa >= 3.6 => 0.3
+          case "intermediate" if student.cgpa >= 2.5 => 0.2
+          case _ => 0.1
+        }
+      } else {
+        // Use average subject performance if CGPA not available
+        val avgPercentage = if (student.topSubjects.nonEmpty) {
+          student.topSubjects.map(_.percentage).sum / student.topSubjects.size
+        } else {
+          70.0 // Default middle value
+        }
+        
+        project.difficultyLevel.toLowerCase match {
+          case "beginner" if avgPercentage < 70.0 => 0.3
+          case "intermediate" if avgPercentage >= 70.0 && avgPercentage < 85.0 => 0.3
+          case "advanced" if avgPercentage >= 85.0 => 0.3
+          case "intermediate" if avgPercentage >= 60.0 => 0.2
+          case _ => 0.1
+        }
       }
       score += difficultyMatch
       
+      // Only mention CGPA if it exists
       if (difficultyMatch >= 0.25) {
-        reasons += s"Appropriate ${project.difficultyLevel.toLowerCase} difficulty for your CGPA of ${student.cgpa}"
+        if (student.cgpa > 0.0) {
+          reasons += s"Appropriate ${project.difficultyLevel.toLowerCase} difficulty for your CGPA of ${student.cgpa}"
+        } else {
+          reasons += s"Appropriate ${project.difficultyLevel.toLowerCase} difficulty based on your subject performance"
+        }
       }
       
       // 2. Subject/skill matching (50% weight)
