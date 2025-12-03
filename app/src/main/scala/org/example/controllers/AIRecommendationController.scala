@@ -90,7 +90,7 @@ class AIRecommendationController {
           student = new StudentResponse(
             studentId = student.id,
             name = if (student.name != null) student.name else s"Student ${student.id}",
-            email = s"student${student.id}@sunway.edu.my",
+            email = s"${student.id}@imail.sunway.edu.my",
             program = if (student.programme != null) student.programme else "Computer Science",
             cohort = student.cohort,
             cgpa = if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0

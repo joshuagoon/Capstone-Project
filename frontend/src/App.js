@@ -137,7 +137,8 @@ function App() {
                     <tr>
                       <th>Course</th>
                       <th>Grade</th>
-                      <th>Semester</th>
+                      <th>Percentage</th>
+                      <th>Month/Year</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -145,6 +146,7 @@ function App() {
                       <tr key={index}>
                         <td>{grade.course}</td>
                         <td><span className="grade-badge">{grade.grade}</span></td>
+                        <td>{grade.percentage ? `${grade.percentage.toFixed(1)}%` : 'N/A'}</td>
                         <td>{grade.semester}</td>
                       </tr>
                     ))}

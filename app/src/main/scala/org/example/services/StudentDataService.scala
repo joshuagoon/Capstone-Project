@@ -106,16 +106,18 @@ class StudentDataService {
       
       // Get recent grades
       val recentGrades = studentSubjects
+        .filter(s => s.examYear != 0 && s.examMonth != null)
         .sortBy(s => (
           s.examYear,
-          s.examMonth.toIntOption.getOrElse(0)  // Convert String to Int for proper sorting
+          try { s.examMonth.toInt } catch { case _: Exception => 0 }
         ))
         .reverse
         .take(5)
         .map(s => Map(
           "course" -> s"${s.subjectCode} - ${s.subjectName}",
           "grade" -> s.grade,
-          "semester" -> s"${s.examMonth} ${s.examYear}"
+          "percentage" -> (if (s.overallPercentage != null) s.overallPercentage.doubleValue() else 0.0),
+          "semester" -> s"${s.examMonth}/${s.examYear}"
         ))
       
       Map(
@@ -133,12 +135,64 @@ class StudentDataService {
    */
   private def calculateCompetencies(subjects: List[RealSubject]): List[Map[String, Any]] = {
     val competencyAreas = Map(
-      "Programming" -> List("programming", "java", "python", "c++", "code", "software"),
-      "Artificial Intelligence" -> List("ai", "artificial intelligence", "machine learning", "neural"),
-      "Web Development" -> List("web", "html", "css", "javascript", "internet"),
-      "Database Management" -> List("database", "sql", "data management"),
-      "Mobile Development" -> List("mobile", "android", "ios", "app"),
-      "Data Science" -> List("data science", "analytics", "statistics", "data mining")
+      // Core Programming & Software Development
+      "Programming & Software Development" -> List(
+        "programming", "code", "software", "object-oriented", "functional", 
+        "concurrent", "embedded", "c#", "problem solving"
+      ),
+      
+      // Artificial Intelligence & Machine Learning
+      "Artificial Intelligence" -> List(
+        "artificial intelligence", "machine learning", "computational intelligence",
+        "computer vision", "neural"
+      ),
+      
+      // Data Science & Analytics
+      "Data Science & Analytics" -> List(
+        "data mining", "knowledge discovery", "business intelligence", 
+        "analytics", "statistics", "big data", "visual analytics"
+      ),
+      
+      // Web & Mobile Development
+      "Web & Mobile Development" -> List(
+        "web", "mobile", "html", "javascript", "internet", "commerce",
+        "application development"
+      ),
+      
+      // Database & Information Systems
+      "Database Management" -> List(
+        "database", "sql", "data management", "information systems",
+        "customer relationship", "crm"
+      ),
+      
+      // Networks & Security
+      "Networks & Cybersecurity" -> List(
+        "network", "security", "cyber", "hacking", "forensic", "distributed",
+        "cryptography", "ethical hacking"
+      ),
+      
+      // Software Engineering
+      "Software Engineering" -> List(
+        "software engineering", "software architecture", "design pattern",
+        "requirement", "testing", "software process", "capstone"
+      ),
+      
+      // Digital Systems & Hardware  
+      "Digital Systems & Electronics" -> List(
+        "digital", "electronic", "microprocessor", "embedded system",
+        "circuit", "signal processing", "computer organisation"
+      ),
+      
+      // Project Management & Business
+      "Project Management" -> List(
+        "project management", "entrepreneurship", "management"
+      ),
+      
+      // Human-Computer Interaction
+      "UI/UX Design" -> List(
+        "human computer interaction", "ui/ux", "user interface",
+        "design thinking", "multimedia"
+      )
     )
     
     competencyAreas.map { case (competency, keywords) =>
@@ -152,8 +206,8 @@ class StudentDataService {
         ).sum / matchingSubjects.size
         
         val level = if (avgScore >= 85) "Advanced"
-                   else if (avgScore >= 70) "Intermediate"
-                   else "Beginner"
+                  else if (avgScore >= 70) "Intermediate"
+                  else "Beginner"
         
         Some(Map(
           "name" -> competency,

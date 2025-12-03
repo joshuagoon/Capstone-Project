@@ -51,7 +51,7 @@ function Login({ onLoginSuccess }) {
               id="studentId"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
-              placeholder="Enter your student ID (e.g., 9897587)"
+              placeholder="Enter your student ID"
               required
               autoFocus
             />
@@ -63,10 +63,6 @@ function Login({ onLoginSuccess }) {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-
-        <div className="login-footer">
-          <p className="hint">💡 Try Student IDs like: 9897587, 860750, 2733926</p>
-        </div>
       </div>
     </div>
   );
