@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Login from './components/Login';
+import Recommendations from './components/Recommendations';
 import { getStudentPerformance, getAIRecommendations } from './services/api';
 
 function App() {
   const [currentStudent, setCurrentStudent] = useState(null);
   const [performance, setPerformance] = useState(null);
-  const [recommendations, setRecommendations] = useState([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -16,7 +17,7 @@ function App() {
     await fetchStudentData(student.studentId);
   };
 
-  // Fetch student performance and recommendations
+  // Fetch student performance
   const fetchStudentData = async (studentId) => {
     try {
       setLoading(true);
@@ -25,10 +26,6 @@ function App() {
       // Fetch performance data
       const perfResponse = await getStudentPerformance(studentId);
       setPerformance(perfResponse.data);
-
-      // Fetch AI recommendations
-      const recResponse = await getAIRecommendations(studentId);
-      setRecommendations(recResponse.data);
     } catch (err) {
       setError('Failed to fetch student data');
       console.error(err);
@@ -41,13 +38,23 @@ function App() {
   const handleLogout = () => {
     setCurrentStudent(null);
     setPerformance(null);
-    setRecommendations([]);
+    setShowRecommendations(false);
     setError(null);
   };
 
   // If not logged in, show login page
   if (!currentStudent) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show recommendations page
+  if (showRecommendations) {
+    return (
+      <Recommendations 
+        studentId={currentStudent.studentId}
+        onBack={() => setShowRecommendations(false)}
+      />
+    );
   }
 
   // Show loading state
@@ -138,7 +145,7 @@ function App() {
                       <th>Course</th>
                       <th>Grade</th>
                       <th>Percentage</th>
-                      <th>Month/Year</th>
+                      <th>Month / Year</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -157,26 +164,16 @@ function App() {
           </div>
         )}
 
-        {/* AI Recommendations */}
-        <div className="recommendations card">
-          <h2>AI-Recommended Capstone Projects</h2>
-          {recommendations && recommendations.length > 0 ? (
-            <div className="recommendation-list">
-              {recommendations.map((rec, index) => (
-                <div key={index} className="recommendation-item">
-                  <div className="rec-header">
-                    <h3>{rec.projectTitle}</h3>
-                    <span className="confidence-score">
-                      {(rec.score * 100).toFixed(0)}% match
-                    </span>
-                  </div>
-                  <p className="reason">{rec.reason}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No recommendations available for this student.</p>
-          )}
+        {/* CTA to View Recommendations */}
+        <div className="recommendations-cta card">
+          <h2>Ready to find your perfect capstone project?</h2>
+          <p>Get personalized AI-powered recommendations based on your academic profile</p>
+          <button 
+            onClick={() => setShowRecommendations(true)}
+            className="view-recommendations-button"
+          >
+            View AI Recommendations →
+          </button>
         </div>
       </div>
     </div>

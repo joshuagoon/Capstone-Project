@@ -169,30 +169,53 @@ class AIRecommendationController {
   /**
    * Get AI-powered recommendations using REAL student data from Cassandra
    */
-  @GetMapping(Array("/ai-recommendations/{studentId}"))
-  def getAIRecommendations(@PathVariable studentId: Int): ResponseEntity[java.util.List[RecommendationResponse]] = {
-    println(s"Fetching AI recommendations for student ID: $studentId")
-    
-    studentDataService.buildStudentProfile(studentId) match {
-      case Some(studentProfile) =>
-        println(s"Built profile for ${studentProfile.name} with CGPA ${studentProfile.cgpa}")
-        println(s"Top subjects: ${studentProfile.topSubjects.map(_.subjectName).mkString(", ")}")
-        
-        val availableProjects = CapstoneProjects.getAll
-        val recommendations = aiService.generateRecommendations(studentProfile, availableProjects)
-        
-        val response = recommendations.map(rec => 
-          new RecommendationResponse(rec.projectId, rec.projectTitle, rec.matchScore, rec.reason)
-        ).asJava
-        
-        ResponseEntity.ok(response)
-        
-      case None =>
-        println(s"Student $studentId not found in database")
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(java.util.Collections.emptyList[RecommendationResponse]())
+  @GetMapping(Array("/recommendations/{studentId}"))
+  def getAIRecommendations(
+    @PathVariable studentId: Int,
+    @RequestParam(required = false) exclude: String
+  ): ResponseEntity[_] = {
+    try {
+      val excludeIds = if (exclude != null && exclude.nonEmpty) {
+        exclude.split(",").map(_.toInt).toList
+      } else {
+        List.empty[Int]
+      }
+      
+      studentDataService.buildStudentProfile(studentId) match {
+        case Some(profile) =>
+          val projects = CapstoneProjects.getAll
+          val recommendations = aiService.generateRecommendations(
+            profile, 
+            projects,
+            excludeIds
+          )
+          
+          // Convert to Java list of RecommendationResponse
+          val javaRecs = recommendations.map(rec =>
+            new RecommendationResponse(
+              rec.projectId,
+              rec.projectTitle,
+              rec.matchScore,
+              rec.reason
+            )
+          ).asJava
+          
+          ResponseEntity.ok(javaRecs)
+          
+        case None =>
+          val errorMap = new java.util.HashMap[String, Any]()
+          errorMap.put("error", "Student not found")
+          ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMap)
+      }
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        val errorMap = new java.util.HashMap[String, Any]()
+        errorMap.put("error", e.getMessage)
+        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorMap)
     }
   }
-  
+    
   /**
    * Get all available capstone projects
    */

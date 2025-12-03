@@ -7,6 +7,7 @@ import java.net.URI
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.example.data.Project
+import scala.util.Random
 
 case class StudentProfile(
   id: Int,
@@ -41,25 +42,34 @@ class AIRecommendationService {
 
   def generateRecommendations(
     studentProfile: StudentProfile,
-    availableProjects: List[Project]
+    availableProjects: List[Project],
+    excludeProjectIds: List[Int] = List.empty
   ): List[ProjectRecommendation] = {
     
     println(s"Generating recommendations for student: ${studentProfile.name}")
+    println(s"Excluding projects: ${excludeProjectIds.mkString(", ")}")
     
     if (apiKey == null || apiKey.isEmpty || apiKey == "none") {
       println("No API key configured, using rule-based recommendations")
-      return getRuleBasedRecommendations(studentProfile, availableProjects)
+      return getRuleBasedRecommendations(studentProfile, availableProjects, excludeProjectIds)
     }
     
-    val prompt = buildPrompt(studentProfile, availableProjects)
+    // Filter out excluded projects
+    val filteredProjects = availableProjects.filterNot(p => excludeProjectIds.contains(p.id))
+    
+    if (filteredProjects.size < 3) {
+      println(s"Warning: Only ${filteredProjects.size} projects available after exclusions")
+    }
+    
+    val prompt = buildPrompt(studentProfile, filteredProjects)
     
     try {
       val response = callClaudeAPI(prompt)
-      parseRecommendations(response, availableProjects, studentProfile)
+      parseRecommendations(response, filteredProjects, studentProfile)
     } catch {
       case e: Exception =>
         println(s"Claude API failed, falling back to rule-based: ${e.getMessage}")
-        getRuleBasedRecommendations(studentProfile, availableProjects)
+        getRuleBasedRecommendations(studentProfile, filteredProjects, excludeProjectIds)
     }
   }
   
@@ -81,30 +91,37 @@ class AIRecommendationService {
     
     // Difficulty guidance based on CGPA (only if CGPA exists)
     val difficultyGuidance = if (student.cgpa > 0.0) {
-      s"2. Appropriate difficulty level based on CGPA (3.5+ = Advanced, 3.0-3.5 = Intermediate, <3.0 = Beginner)\n"
+      "2. Appropriate difficulty level based on CGPA (3.5+ = Advanced, 3.0-3.5 = Intermediate, <3.0 = Beginner)"
     } else {
-      "2. Appropriate difficulty level based on subject performance\n"
+      "2. Appropriate difficulty level based on subject performance"
     }
     
-    s"""You are an academic advisor helping a computer science student choose the most suitable capstone project.
+    // Add randomness to get different recommendations each time
+    val randomSeed = Random.nextInt(1000)
+    
+    s"""You are an academic advisor helping a university student choose the most suitable capstone project based on their academic background and interests.
 
 Student Profile:
 - Name: ${student.name}
-$cgpaSection- Top Subject Performances:
-$subjectsList
+${cgpaSection}- Top Subject Performances:
+${subjectsList}
 ${if (student.interests.nonEmpty) s"- Stated Interests: ${student.interests}" else ""}
 
 Available Capstone Projects:
-$projectsList
+${projectsList}
 
 Task: Recommend the TOP 3 most suitable capstone projects for this student.
 
+IMPORTANT: Provide DIVERSE recommendations. Each of the 3 projects should be different and appeal to different aspects of the student's profile.
+
 For each recommendation, consider:
 1. Match between student's strong subjects and project's required skills
-$difficultyGuidance3. Student's interests alignment
+${difficultyGuidance}
+3. Student's interests alignment
 4. Specific grades in relevant subjects
+5. Variety - choose projects from different domains/topics
 
-Provide your response as a JSON array with exactly 3 recommendations, ordered by match score (highest first):
+Provide your response as a JSON array with exactly 3 DIFFERENT recommendations, ordered by match score (highest first):
 
 [
   {
@@ -115,11 +132,16 @@ Provide your response as a JSON array with exactly 3 recommendations, ordered by
   }
 ]
 
-IMPORTANT: 
+CRITICAL RULES:
 - Use ONLY project IDs and titles from the list above
-- Match scores should be between 0.60 and 0.98 (be realistic)
+- Each of the 3 recommendations MUST be a DIFFERENT project (different ID and title)
+- Match scores should be between 0.60 and 0.98 (be realistic and varied)
 - Reasons must be specific and reference actual student grades/subjects
-${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not available\n" else ""}- Return ONLY the JSON array, no other text"""
+- Prioritize diversity - avoid recommending similar or overlapping projects
+${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not available" else ""}
+- Return ONLY the JSON array, no other text
+
+Randomization seed: ${randomSeed} (use this to provide variety in your selections)"""
   }
   
   private def callClaudeAPI(prompt: String): String = {
@@ -133,6 +155,7 @@ ${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not
     val requestBody = s"""{
       "model": "claude-sonnet-4-20250514",
       "max_tokens": 2000,
+      "temperature": 0.8,
       "messages": [
         {
           "role": "user",
@@ -197,13 +220,21 @@ ${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not
       }
       
       println(s"Successfully parsed ${recommendations.size} recommendations")
-      recommendations.toList.take(3)
+      
+      // Verify uniqueness
+      val uniqueIds = recommendations.map(_.projectId).distinct
+      if (uniqueIds.size != recommendations.size) {
+        println("WARNING: AI returned duplicate projects, removing duplicates...")
+        recommendations.toList.distinctBy(_.projectId).take(3)
+      } else {
+        recommendations.toList.take(3)
+      }
       
     } catch {
       case e: Exception =>
         println(s"Error parsing recommendations: ${e.getMessage}")
         e.printStackTrace()
-        getRuleBasedRecommendations(student, projects)
+        getRuleBasedRecommendations(student, projects, List.empty)
     }
   }
   
@@ -212,14 +243,22 @@ ${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not
    */
   private def getRuleBasedRecommendations(
     student: StudentProfile,
-    projects: List[Project]
+    projects: List[Project],
+    excludeProjectIds: List[Int] = List.empty
   ): List[ProjectRecommendation] = {
     
     println("Using rule-based recommendation algorithm")
     
-    val scoredProjects = projects.map { project =>
+    // Filter out excluded projects
+    val availableProjects = projects.filterNot(p => excludeProjectIds.contains(p.id))
+    
+    val scoredProjects = availableProjects.map { project =>
       var score = 0.0
       val reasons = scala.collection.mutable.ListBuffer[String]()
+      
+      // Add some randomness to get different results each time
+      val randomBonus = Random.nextDouble() * 0.1
+      score += randomBonus
       
       // 1. Difficulty matching (30% weight) - adjusted for missing CGPA
       val difficultyMatch = if (student.cgpa > 0.0) {
@@ -305,6 +344,7 @@ ${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not
       ProjectRecommendation(project.id, project.title, score, finalReason)
     }
     
-    scoredProjects.sortBy(rec => -rec.matchScore).take(3)
+    // Shuffle to add more variety, then sort by score
+    Random.shuffle(scoredProjects).sortBy(rec => -rec.matchScore).take(3)
   }
 }
