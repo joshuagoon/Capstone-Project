@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Login from './components/Login';
 import Recommendations from './components/Recommendations';
-import { getStudentPerformance, getAIRecommendations } from './services/api';
+import { getStudentPerformance } from './services/api';
 
 function App() {
   const [currentStudent, setCurrentStudent] = useState(null);
@@ -11,9 +11,26 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Load saved session on mount
+  useEffect(() => {
+    const savedStudent = localStorage.getItem('currentStudent');
+    if (savedStudent) {
+      try {
+        const student = JSON.parse(savedStudent);
+        setCurrentStudent(student);
+        fetchStudentData(student.studentId);
+      } catch (e) {
+        console.error('Failed to load saved session:', e);
+        localStorage.removeItem('currentStudent');
+      }
+    }
+  }, []);
+
   // Handle successful login
   const handleLoginSuccess = async (student) => {
     setCurrentStudent(student);
+    // Save to localStorage
+    localStorage.setItem('currentStudent', JSON.stringify(student));
     await fetchStudentData(student.studentId);
   };
 
@@ -40,6 +57,8 @@ function App() {
     setPerformance(null);
     setShowRecommendations(false);
     setError(null);
+    // Clear from localStorage
+    localStorage.removeItem('currentStudent');
   };
 
   // If not logged in, show login page

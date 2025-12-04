@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Recommendations.css';
 import { getAIRecommendations } from '../services/api';
 
@@ -9,6 +9,9 @@ function Recommendations({ studentId, onBack }) {
   const [loading, setLoading] = useState(false);
   const [regeneratingIndex, setRegeneratingIndex] = useState(null);
   const [error, setError] = useState(null);
+  
+  // Use ref to prevent double fetching
+  const hasFetchedRef = useRef(false);
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -29,10 +32,13 @@ function Recommendations({ studentId, onBack }) {
     }
   }, [favorites, studentId]);
 
-  // Fetch recommendations on component mount
+  // Fetch recommendations on component mount (only once!)
   useEffect(() => {
-    fetchRecommendations();
-  }, [studentId]);
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchRecommendations();
+    }
+  }, []);
 
   const fetchRecommendations = async () => {
     try {
