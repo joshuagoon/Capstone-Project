@@ -3,12 +3,13 @@ import './App.css';
 import Login from './components/Login';
 import PreferencesPage from './components/PreferencesPage';
 import Recommendations from './components/Recommendations';
+import GradesPage from './components/GradesPage';
 import { getStudentPerformance } from './services/api';
 
 function App() {
   const [currentStudent, setCurrentStudent] = useState(null);
   const [performance, setPerformance] = useState(null);
-  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard', 'preferences', 'recommendations'
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard', 'preferences', 'recommendations', 'grades'
   const [userPreferences, setUserPreferences] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -70,6 +71,16 @@ function App() {
   // If not logged in, show login page
   if (!currentStudent) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show grades page
+  if (currentPage === 'grades') {
+    return (
+      <GradesPage
+        studentId={currentStudent.studentId}
+        onBack={() => setCurrentPage('dashboard')}
+      />
+    );
   }
 
   // Show preferences page
@@ -175,7 +186,15 @@ function App() {
 
             {performance.grades && performance.grades.length > 0 && (
               <>
-                <h3>Recent Grades</h3>
+                <div className="section-header-with-action">
+                  <h3>Recent Grades</h3>
+                  <button 
+                    onClick={() => setCurrentPage('grades')}
+                    className="view-more-button"
+                  >
+                    View All Grades →
+                  </button>
+                </div>
                 <table className="grades-table">
                   <thead>
                     <tr>
@@ -186,7 +205,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {performance.grades.map((grade, index) => (
+                    {performance.grades.slice(0, 5).map((grade, index) => (
                       <tr key={index}>
                         <td>{grade.course}</td>
                         <td><span className="grade-badge">{grade.grade}</span></td>

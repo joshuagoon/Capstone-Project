@@ -106,15 +106,14 @@ class StudentDataService {
       // Calculate competencies from subjects
       val competencies = calculateCompetencies(studentSubjects)
       
-      // Get recent grades
-      val recentGrades = studentSubjects
+      // Get ALL grades (sorted by date, most recent first)
+      val allGrades = studentSubjects
         .filter(s => s.examYear != 0 && s.examMonth != null)
         .sortBy(s => (
           s.examYear,
           try { s.examMonth.toInt } catch { case _: Exception => 0 }
         ))
         .reverse
-        .take(5)
         .map(s => Map(
           "course" -> s"${s.subjectCode} - ${s.subjectName}",
           "grade" -> s.grade,
@@ -127,7 +126,7 @@ class StudentDataService {
         "gpa" -> (if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0),
         "completedCourses" -> studentSubjects.size,
         "competencies" -> competencies,
-        "grades" -> recentGrades
+        "grades" -> allGrades  // ALL grades, not just 5
       )
     }
   }
