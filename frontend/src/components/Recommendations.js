@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './Recommendations.css';
 import { getAIRecommendations } from '../services/api';
 
-function Recommendations({ studentId, onBack }) {
+function Recommendations({ studentId, userPreferences, onBack }) {
   const [allRecommendations, setAllRecommendations] = useState([]);
   const [displayedRecommendations, setDisplayedRecommendations] = useState([]);
   const [favorites, setFavorites] = useState([]);
@@ -44,11 +44,14 @@ function Recommendations({ studentId, onBack }) {
     try {
       setLoading(true);
       setError(null);
-      const response = await getAIRecommendations(studentId);
+      const response = await getAIRecommendations(studentId, [], userPreferences);
       
       // Store all recommendations
       setAllRecommendations(response.data);
       setDisplayedRecommendations(response.data);
+      
+      // Save to localStorage for favorites page access
+      localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(response.data));
     } catch (err) {
       setError('Failed to load recommendations');
       console.error(err);
@@ -59,10 +62,8 @@ function Recommendations({ studentId, onBack }) {
 
   const handleFavorite = (projectId) => {
     if (favorites.includes(projectId)) {
-      // Remove from favorites
       setFavorites(favorites.filter(id => id !== projectId));
     } else {
-      // Add to favorites
       setFavorites([...favorites, projectId]);
     }
   };
@@ -72,19 +73,13 @@ function Recommendations({ studentId, onBack }) {
       setRegeneratingIndex(index);
       setError(null);
       
-      // Get all currently displayed project IDs to exclude
       const excludeIds = displayedRecommendations.map(rec => rec.projectId);
-      
-      // Fetch new recommendations excluding current ones
-      const response = await getAIRecommendations(studentId, excludeIds);
+      const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
       if (response.data.length > 0) {
-        // Replace at index with first new recommendation
         const newDisplayed = [...displayedRecommendations];
         newDisplayed[index] = response.data[0];
         setDisplayedRecommendations(newDisplayed);
-        
-        // Add to pool
         setAllRecommendations([...allRecommendations, ...response.data]);
       } else {
         setError('No more unique recommendations available');
@@ -102,16 +97,13 @@ function Recommendations({ studentId, onBack }) {
       setLoading(true);
       setError(null);
       
-      // Exclude favorited projects
       const favoritedProjects = displayedRecommendations.filter(rec => 
         favorites.includes(rec.projectId)
       );
       const excludeIds = favoritedProjects.map(rec => rec.projectId);
       
-      // Get new recommendations
-      const response = await getAIRecommendations(studentId, excludeIds);
+      const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
-      // Build new displayed list: keep favorites, add new recommendations
       const newDisplayed = [];
       let newRecIndex = 0;
       
@@ -153,10 +145,10 @@ function Recommendations({ studentId, onBack }) {
     <div className="recommendations-page">
       <div className="recommendations-header">
         <button onClick={onBack} className="back-button">
-          ← Back to Dashboard
+          ← Back to Preferences
         </button>
         <h1>AI-Recommended Capstone Projects</h1>
-        <p className="subtitle">Personalized recommendations based on your academic profile</p>
+        <p className="subtitle">Personalized recommendations based on your academic profile and preferences</p>
       </div>
 
       {error && <div className="error-banner">{error}</div>}

@@ -3,7 +3,7 @@ package org.example.controllers
 import org.springframework.web.bind.annotation._
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.{ResponseEntity, HttpStatus}
-import org.example.services.{AIRecommendationService, StudentDataService, StudentProfile}
+import org.example.services.{AIRecommendationService, StudentDataService, StudentProfile, UserPreferences}
 import org.example.data.CapstoneProjects
 import org.example.repositories.RealStudentRepository
 import scala.beans.BeanProperty
@@ -172,7 +172,11 @@ class AIRecommendationController {
   @GetMapping(Array("/recommendations/{studentId}"))
   def getAIRecommendations(
     @PathVariable studentId: Int,
-    @RequestParam(required = false) exclude: String
+    @RequestParam(required = false) exclude: String,
+    @RequestParam(required = false) interests: String,
+    @RequestParam(required = false) difficulty: String,
+    @RequestParam(required = false) avoid: String,
+    @RequestParam(required = false) notes: String
   ): ResponseEntity[_] = {
     try {
       val excludeIds = if (exclude != null && exclude.nonEmpty) {
@@ -181,13 +185,24 @@ class AIRecommendationController {
         List.empty[Int]
       }
       
+      // Build user preferences object
+      val userPreferences = UserPreferences(
+        interests = Option(interests).filter(_.nonEmpty),
+        preferredDifficulty = Option(difficulty).filter(_.nonEmpty),
+        avoidTopics = Option(avoid).filter(_.nonEmpty),
+        additionalNotes = Option(notes).filter(_.nonEmpty)
+      )
+      
+      println(s"User preferences: $userPreferences")
+      
       studentDataService.buildStudentProfile(studentId) match {
         case Some(profile) =>
           val projects = CapstoneProjects.getAll
           val recommendations = aiService.generateRecommendations(
             profile, 
             projects,
-            excludeIds
+            excludeIds,
+            userPreferences
           )
           
           // Convert to Java list of RecommendationResponse

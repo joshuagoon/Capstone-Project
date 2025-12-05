@@ -2,26 +2,32 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Student API calls
-export const getAllStudents = () => api.get('/students');
-export const getStudentById = (id) => api.get(`/students/${id}`);
-export const getStudentPerformance = (id) => api.get(`/performance/${id}`);
-
-// Project API calls
-export const getAllProjects = () => api.get('/projects');
-export const getProjectById = (id) => api.get(`/projects/${id}`);
-
-// Recommendation API calls
-export const getAIRecommendations = async (studentId, excludeIds = []) => {
-  const excludeParam = excludeIds.length > 0 ? `?exclude=${excludeIds.join(',')}` : '';
-  return axios.get(`http://localhost:8080/api/recommendations/${studentId}${excludeParam}`);
+export const login = (studentId) => {
+  return axios.post(`${API_BASE_URL}/login`, { studentId });
 };
 
-export default api;
+export const getStudentPerformance = (studentId) => {
+  return axios.get(`${API_BASE_URL}/performance/${studentId}`);
+};
+
+export const getAIRecommendations = async (studentId, excludeIds = [], preferences = null) => {
+  let url = `${API_BASE_URL}/recommendations/${studentId}`;
+  const params = new URLSearchParams();
+  
+  if (excludeIds.length > 0) {
+    params.append('exclude', excludeIds.join(','));
+  }
+  
+  if (preferences) {
+    if (preferences.interests) params.append('interests', preferences.interests);
+    if (preferences.preferredDifficulty) params.append('difficulty', preferences.preferredDifficulty);
+    if (preferences.avoidTopics) params.append('avoid', preferences.avoidTopics);
+    if (preferences.additionalNotes) params.append('notes', preferences.additionalNotes);
+  }
+  
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+  
+  return axios.get(url);
+};

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Login from './components/Login';
+import PreferencesPage from './components/PreferencesPage';
 import Recommendations from './components/Recommendations';
 import { getStudentPerformance } from './services/api';
 
 function App() {
   const [currentStudent, setCurrentStudent] = useState(null);
   const [performance, setPerformance] = useState(null);
-  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard', 'preferences', 'recommendations'
+  const [userPreferences, setUserPreferences] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -29,7 +31,6 @@ function App() {
   // Handle successful login
   const handleLoginSuccess = async (student) => {
     setCurrentStudent(student);
-    // Save to localStorage
     localStorage.setItem('currentStudent', JSON.stringify(student));
     await fetchStudentData(student.studentId);
   };
@@ -40,7 +41,6 @@ function App() {
       setLoading(true);
       setError(null);
 
-      // Fetch performance data
       const perfResponse = await getStudentPerformance(studentId);
       setPerformance(perfResponse.data);
     } catch (err) {
@@ -55,10 +55,16 @@ function App() {
   const handleLogout = () => {
     setCurrentStudent(null);
     setPerformance(null);
-    setShowRecommendations(false);
+    setCurrentPage('dashboard');
+    setUserPreferences(null);
     setError(null);
-    // Clear from localStorage
     localStorage.removeItem('currentStudent');
+  };
+
+  // Navigate to recommendations with preferences
+  const handleGenerateRecommendations = (preferences) => {
+    setUserPreferences(preferences);
+    setCurrentPage('recommendations');
   };
 
   // If not logged in, show login page
@@ -66,12 +72,24 @@ function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
+  // Show preferences page
+  if (currentPage === 'preferences') {
+    return (
+      <PreferencesPage
+        studentId={currentStudent.studentId}
+        onGenerateRecommendations={handleGenerateRecommendations}
+        onBack={() => setCurrentPage('dashboard')}
+      />
+    );
+  }
+
   // Show recommendations page
-  if (showRecommendations) {
+  if (currentPage === 'recommendations') {
     return (
       <Recommendations 
         studentId={currentStudent.studentId}
-        onBack={() => setShowRecommendations(false)}
+        userPreferences={userPreferences}
+        onBack={() => setCurrentPage('preferences')}
       />
     );
   }
@@ -183,15 +201,15 @@ function App() {
           </div>
         )}
 
-        {/* CTA to View Recommendations */}
+        {/* CTA to View Preferences & Recommendations */}
         <div className="recommendations-cta card">
           <h2>Ready to find your perfect capstone project?</h2>
-          <p>Get personalized AI-powered recommendations based on your academic profile</p>
+          <p>Set your preferences and get personalized AI-powered recommendations</p>
           <button 
-            onClick={() => setShowRecommendations(true)}
+            onClick={() => setCurrentPage('preferences')}
             className="view-recommendations-button"
           >
-            View AI Recommendations →
+            Preferences & Recommendations →
           </button>
         </div>
       </div>
