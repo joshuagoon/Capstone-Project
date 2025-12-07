@@ -13,24 +13,15 @@ function Recommendations({ studentId, userPreferences, onBack }) {
   // Use ref to prevent double fetching
   const hasFetchedRef = useRef(false);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Load favorites from localStorage on mount
   useEffect(() => {
-    const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
-    if (savedFavorites) {
-      try {
-        setFavorites(JSON.parse(savedFavorites));
-      } catch (e) {
-        console.error('Failed to load favorites:', e);
-      }
-    }
+    loadFavorites();
   }, [studentId]);
-
-  // Save favorites to localStorage whenever they change
-  useEffect(() => {
-    if (favorites.length >= 0) {
-      localStorage.setItem(`favorites_${studentId}`, JSON.stringify(favorites));
-    }
-  }, [favorites, studentId]);
 
   // Fetch recommendations on component mount (only once!)
   useEffect(() => {
@@ -39,6 +30,33 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       fetchRecommendations();
     }
   }, []);
+
+  const loadFavorites = () => {
+    const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
+    if (savedFavorites) {
+      try {
+        const favProjects = JSON.parse(savedFavorites);
+        setFavorites(favProjects);
+        console.log('Loaded favorites:', favProjects);
+      } catch (e) {
+        console.error('Failed to load favorites:', e);
+      }
+    }
+  };
+
+  const saveFavorites = (newFavorites) => {
+    // Save favorites list (array of full project objects)
+    localStorage.setItem(`favorites_${studentId}`, JSON.stringify(newFavorites));
+    
+    // Also save just the IDs for backward compatibility
+    const favoriteIds = newFavorites.map(fav => fav.projectId);
+    
+    // Save complete project details for PreferencesPage to access
+    localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(newFavorites));
+    
+    console.log('Saved favorites:', newFavorites);
+    console.log('Saved favorite IDs:', favoriteIds);
+  };
 
   const fetchRecommendations = async () => {
     try {
@@ -51,7 +69,23 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setDisplayedRecommendations(response.data);
       
       // Save to localStorage for favorites page access
-      localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(response.data));
+      const currentRecs = response.data.map(rec => ({
+        projectId: rec.projectId,
+        projectTitle: rec.projectTitle,
+        score: rec.score,
+        reason: rec.reason
+      }));
+      
+      // Merge with existing favorites
+      const existingFavorites = favorites;
+      const allProjects = [...existingFavorites, ...currentRecs];
+      
+      // Remove duplicates by projectId
+      const uniqueProjects = allProjects.filter((proj, index, self) =>
+        index === self.findIndex(p => p.projectId === proj.projectId)
+      );
+      
+      localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(uniqueProjects));
     } catch (err) {
       setError('Failed to load recommendations');
       console.error(err);
@@ -60,12 +94,30 @@ function Recommendations({ studentId, userPreferences, onBack }) {
     }
   };
 
-  const handleFavorite = (projectId) => {
-    if (favorites.includes(projectId)) {
-      setFavorites(favorites.filter(id => id !== projectId));
+  const handleFavorite = (rec) => {
+    const isFavorited = favorites.some(fav => fav.projectId === rec.projectId);
+    
+    if (isFavorited) {
+      // Remove from favorites
+      const newFavorites = favorites.filter(fav => fav.projectId !== rec.projectId);
+      setFavorites(newFavorites);
+      saveFavorites(newFavorites);
     } else {
-      setFavorites([...favorites, projectId]);
+      // Add to favorites - save full project details
+      const favoriteProject = {
+        projectId: rec.projectId,
+        projectTitle: rec.projectTitle,
+        score: rec.score,
+        reason: rec.reason
+      };
+      const newFavorites = [...favorites, favoriteProject];
+      setFavorites(newFavorites);
+      saveFavorites(newFavorites);
     }
+  };
+
+  const isFavorited = (projectId) => {
+    return favorites.some(fav => fav.projectId === projectId);
   };
 
   const handleRegenerate = async (index) => {
@@ -73,14 +125,27 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setRegeneratingIndex(index);
       setError(null);
       
+      // Get all currently displayed project IDs to exclude
       const excludeIds = displayedRecommendations.map(rec => rec.projectId);
+      
+      // Fetch new recommendations excluding current ones
       const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
       if (response.data.length > 0) {
+        // Replace at index with first new recommendation
         const newDisplayed = [...displayedRecommendations];
         newDisplayed[index] = response.data[0];
         setDisplayedRecommendations(newDisplayed);
+        
+        // Add to pool
         setAllRecommendations([...allRecommendations, ...response.data]);
+        
+        // Update localStorage
+        const allProjects = [...favorites, ...newDisplayed];
+        const uniqueProjects = allProjects.filter((proj, idx, self) =>
+          idx === self.findIndex(p => p.projectId === proj.projectId)
+        );
+        localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(uniqueProjects));
       } else {
         setError('No more unique recommendations available');
       }
@@ -97,18 +162,21 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setLoading(true);
       setError(null);
       
+      // Keep favorited projects
       const favoritedProjects = displayedRecommendations.filter(rec => 
-        favorites.includes(rec.projectId)
+        isFavorited(rec.projectId)
       );
       const excludeIds = favoritedProjects.map(rec => rec.projectId);
       
+      // Get new recommendations
       const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
+      // Build new displayed list: keep favorites, add new recommendations
       const newDisplayed = [];
       let newRecIndex = 0;
       
       for (let i = 0; i < 3; i++) {
-        if (i < displayedRecommendations.length && favorites.includes(displayedRecommendations[i].projectId)) {
+        if (i < displayedRecommendations.length && isFavorited(displayedRecommendations[i].projectId)) {
           newDisplayed.push(displayedRecommendations[i]);
         } else if (newRecIndex < response.data.length) {
           newDisplayed.push(response.data[newRecIndex]);
@@ -118,6 +186,13 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       
       setDisplayedRecommendations(newDisplayed);
       setAllRecommendations([...allRecommendations, ...response.data]);
+      
+      // Update localStorage
+      const allProjects = [...favorites, ...newDisplayed];
+      const uniqueProjects = allProjects.filter((proj, idx, self) =>
+        idx === self.findIndex(p => p.projectId === proj.projectId)
+      );
+      localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(uniqueProjects));
     } catch (err) {
       setError('Failed to regenerate recommendations');
       console.error(err);
@@ -129,7 +204,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
   const handleClearFavorites = () => {
     if (window.confirm('Are you sure you want to clear all favorites?')) {
       setFavorites([]);
-      localStorage.removeItem(`favorites_${studentId}`);
+      localStorage.setItem(`favorites_${studentId}`, JSON.stringify([]));
     }
   };
 
@@ -169,7 +244,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
         {displayedRecommendations.map((rec, index) => (
           <div 
             key={`${rec.projectId}-${index}`}
-            className={`recommendation-card ${favorites.includes(rec.projectId) ? 'favorited' : ''}`}
+            className={`recommendation-card ${isFavorited(rec.projectId) ? 'favorited' : ''}`}
           >
             <div className="card-header">
               <div className="project-info">
@@ -179,11 +254,11 @@ function Recommendations({ studentId, userPreferences, onBack }) {
                 </span>
               </div>
               <button
-                onClick={() => handleFavorite(rec.projectId)}
-                className={`favorite-button ${favorites.includes(rec.projectId) ? 'active' : ''}`}
-                title={favorites.includes(rec.projectId) ? 'Remove from favorites' : 'Add to favorites'}
+                onClick={() => handleFavorite(rec)}
+                className={`favorite-button ${isFavorited(rec.projectId) ? 'active' : ''}`}
+                title={isFavorited(rec.projectId) ? 'Remove from favorites' : 'Add to favorites'}
               >
-                {favorites.includes(rec.projectId) ? '★' : '☆'}
+                {isFavorited(rec.projectId) ? '★' : '☆'}
               </button>
             </div>
 
@@ -195,8 +270,8 @@ function Recommendations({ studentId, userPreferences, onBack }) {
               <button
                 onClick={() => handleRegenerate(index)}
                 className="regenerate-button"
-                disabled={regeneratingIndex === index || favorites.includes(rec.projectId)}
-                title={favorites.includes(rec.projectId) ? 'Cannot regenerate favorited projects' : 'Get a different recommendation'}
+                disabled={regeneratingIndex === index || isFavorited(rec.projectId)}
+                title={isFavorited(rec.projectId) ? 'Cannot regenerate favorited projects' : 'Get a different recommendation'}
               >
                 {regeneratingIndex === index ? '🔄 Regenerating...' : '🔄 Regenerate'}
               </button>

@@ -6,7 +6,6 @@ import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.URI
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import org.example.data.Project
 import scala.util.Random
 
 case class StudentProfile(
@@ -49,165 +48,150 @@ class AIRecommendationService {
 
   def generateRecommendations(
     studentProfile: StudentProfile,
-    availableProjects: List[Project],
     excludeProjectIds: List[Int] = List.empty,
     userPreferences: UserPreferences = UserPreferences(None, None, None, None)
   ): List[ProjectRecommendation] = {
     
-    println(s"Generating recommendations for student: ${studentProfile.name}")
-    println(s"Excluding projects: ${excludeProjectIds.mkString(", ")}")
+    println(s"Generating AI-powered recommendations for student: ${studentProfile.name}")
     println(s"User preferences: $userPreferences")
     
     if (apiKey == null || apiKey.isEmpty || apiKey == "none") {
-      println("No API key configured, using rule-based recommendations")
-      return getRuleBasedRecommendations(studentProfile, availableProjects, excludeProjectIds, userPreferences)
+      println("ERROR: No API key configured! AI generation requires Claude API.")
+      return getFallbackRecommendations(studentProfile, userPreferences)
     }
     
-    // Filter out excluded projects
-    val filteredProjects = availableProjects.filterNot(p => excludeProjectIds.contains(p.id))
-    
-    // Further filter by user preferences (avoid topics)
-    val finalProjects = userPreferences.avoidTopics match {
-      case Some(avoid) =>
-        val avoidKeywords = avoid.toLowerCase.split(",").map(_.trim)
-        filteredProjects.filterNot(p =>
-          avoidKeywords.exists(keyword =>
-            p.title.toLowerCase.contains(keyword) ||
-            p.description.toLowerCase.contains(keyword) ||
-            p.requiredSkills.exists(_.toLowerCase.contains(keyword))
-          )
-        )
-      case None => filteredProjects
-    }
-    
-    if (finalProjects.size < 3) {
-      println(s"Warning: Only ${finalProjects.size} projects available after exclusions and filters")
-    }
-    
-    val prompt = buildPrompt(studentProfile, finalProjects, userPreferences)
+    val prompt = buildCreativePrompt(studentProfile, userPreferences)
     
     try {
       val response = callClaudeAPI(prompt)
-      parseRecommendations(response, finalProjects, studentProfile)
+      parseRecommendations(response, studentProfile)
     } catch {
       case e: Exception =>
-        println(s"Claude API failed, falling back to rule-based: ${e.getMessage}")
-        getRuleBasedRecommendations(studentProfile, finalProjects, excludeProjectIds, userPreferences)
+        println(s"Claude API failed: ${e.getMessage}")
+        e.printStackTrace()
+        getFallbackRecommendations(studentProfile, userPreferences)
     }
   }
   
-  private def buildPrompt(
-    student: StudentProfile, 
-    projects: List[Project],
+  private def buildCreativePrompt(
+    student: StudentProfile,
     userPrefs: UserPreferences
   ): String = {
-    val projectsList = projects.map(p => 
-      s"${p.id}. ${p.title} (${p.difficultyLevel})\n   Description: ${p.description}\n   Required Skills: ${p.requiredSkills.mkString(", ")}"
-    ).mkString("\n\n")
     
-    val subjectsList = student.topSubjects.map(s =>
-      s"  • ${s.subjectName}: ${s.grade} (${s.percentage}%)"
-    ).mkString("\n")
+    val studentContext = buildStudentContext(student, userPrefs)
     
-    // Build CGPA section conditionally
-    val cgpaSection = if (student.cgpa > 0.0) {
-      s"- Overall CGPA: ${student.cgpa}\n"
-    } else {
-      ""
-    }
-    
-    // Build user preferences section
-    val preferencesSection = buildPreferencesSection(userPrefs)
-    
-    // Difficulty guidance based on CGPA or user preference
     val difficultyGuidance = userPrefs.preferredDifficulty match {
-      case Some(diff) => s"2. PRIORITIZE ${diff} difficulty level as explicitly requested by the student"
-      case None if student.cgpa > 0.0 => 
-        "2. Appropriate difficulty level based on CGPA (3.5+ = Advanced, 3.0-3.5 = Intermediate, <3.0 = Beginner)"
-      case None => 
-        "2. Appropriate difficulty level based on subject performance"
+      case Some(diff) => s"They specifically want a ${diff} difficulty project."
+      case None if student.cgpa > 0.0 =>
+        if (student.cgpa >= 3.5) "They can handle advanced, challenging projects."
+        else if (student.cgpa >= 3.0) "They're ready for intermediate to advanced projects."
+        else "They should start with beginner to intermediate projects."
+      case None =>
+        val avgPercentage = if (student.topSubjects.nonEmpty) {
+          student.topSubjects.map(_.percentage).sum / student.topSubjects.size
+        } else {
+          70.0
+        }
+        if (avgPercentage >= 85) "They can handle advanced, challenging projects."
+        else if (avgPercentage >= 70) "They're ready for intermediate to advanced projects."
+        else "They should start with beginner to intermediate projects."
     }
     
-    // Add randomness to get different recommendations each time
-    val randomSeed = Random.nextInt(1000)
+    val avoidanceGuidance = userPrefs.avoidTopics match {
+      case Some(avoid) => s"\n⚠️ IMPORTANT: Do NOT suggest projects related to: ${avoid}"
+      case None => ""
+    }
     
-    s"""You are an academic advisor helping a university student choose the most suitable capstone project based on their academic background, interests, and personal preferences.
+    s"""You are a creative academic advisor who designs personalized capstone projects for university students.
 
-Student Profile:
-- Name: ${student.name}
-${cgpaSection}- Top Subject Performances:
-${subjectsList}
-${if (student.interests.nonEmpty) s"- Stated Interests: ${student.interests}" else ""}
+STUDENT PROFILE:
+${studentContext}
 
-${preferencesSection}
-
-Available Capstone Projects:
-${projectsList}
-
-Task: Recommend the TOP 3 most suitable capstone projects for this student.
-
-IMPORTANT: Provide DIVERSE recommendations. Each of the 3 projects should be different and appeal to different aspects of the student's profile.
-
-For each recommendation, consider:
-1. Match between student's strong subjects and project's required skills
 ${difficultyGuidance}
-3. Student's stated interests and preferences
-4. Specific grades in relevant subjects
-5. Variety - choose projects from different domains/topics
-${userPrefs.interests.map(i => s"6. PRIORITIZE student's specific interests: $i").getOrElse("")}
-${userPrefs.additionalNotes.map(n => s"7. Consider student's additional notes: $n").getOrElse("")}
+${avoidanceGuidance}
 
-Provide your response as a JSON array with exactly 3 DIFFERENT recommendations, ordered by match score (highest first):
+YOUR TASK:
+Design 3 COMPLETELY ORIGINAL capstone project ideas specifically for ${student.name}. These should be:
+- Tailored to their unique strengths and interests
+- Realistic and achievable within one semester
+- Technically challenging but not overwhelming
+- Industry-relevant and valuable for their portfolio
+- Different from each other (don't suggest similar projects)
 
+For each project:
+1. Create an innovative, specific project title
+2. Explain why THIS student would excel at THIS project
+3. Connect it to their coursework and grades
+4. Show how it builds on their strengths
+5. Make them excited about working on it
+
+THINK CREATIVELY:
+- What kind of projects would showcase THEIR specific skills?
+- What problems could THEY solve given their background?
+- What would make THEM stand out to employers?
+- How can you combine their different strengths in interesting ways?
+
+GUIDELINES:
+✓ Be specific - not generic projects anyone could do
+✓ Reference actual courses and grades from their profile
+✓ Make each project unique and distinct
+✓ Be encouraging and show genuine enthusiasm
+✓ Consider current technology trends and industry needs
+${userPrefs.interests.map(i => s"✓ MUST incorporate their stated interest: $i").getOrElse("")}
+${userPrefs.additionalNotes.map(n => s"✓ Consider: $n").getOrElse("")}
+${if (student.cgpa <= 0.0) "✓ Don't mention CGPA (focus on course performance)" else ""}
+
+Return your response as JSON:
 [
   {
-    "projectId": 1,
-    "projectTitle": "exact project title from list above",
-    "matchScore": 0.95,
-    "reason": "Specific reason mentioning student's grades and strengths${userPrefs.interests.map(_ => ", and aligning with your stated interests").getOrElse("")}. For example: 'Your excellent grade in Artificial Intelligence (A, 88%) demonstrates strong expertise needed for this project.'"
+    "projectId": [generate a random number between 1000-9999],
+    "projectTitle": "[Your creative, specific project title]",
+    "matchScore": [realistic confidence 0.70-0.95],
+    "reason": "[Your enthusiastic, personalized explanation - make it conversational and specific to THIS student]"
   }
 ]
 
-CRITICAL RULES:
-- Use ONLY project IDs and titles from the list above
-- Each of the 3 recommendations MUST be a DIFFERENT project (different ID and title)
-- Match scores should be between 0.60 and 0.98 (be realistic and varied)
-- Reasons must be specific and reference actual student grades/subjects
-- Prioritize diversity - avoid recommending similar or overlapping projects
-${if (student.cgpa <= 0.0) "- Do NOT mention CGPA in your reasons since it's not available" else ""}
-${userPrefs.interests.map(_ => "- Explicitly mention how the project aligns with the student's stated interests").getOrElse("")}
-- Return ONLY the JSON array, no other text
+IMPORTANT:
+- Each project should be COMPLETELY DIFFERENT
+- Don't suggest variations of the same idea
+- Be creative and think outside the box
+- Make ${student.name} feel like these were designed just for them
 
-Randomization seed: ${randomSeed} (use this to provide variety in your selections)"""
+Return ONLY the JSON array, nothing else."""
   }
   
-  private def buildPreferencesSection(prefs: UserPreferences): String = {
+  private def buildStudentContext(student: StudentProfile, prefs: UserPreferences): String = {
     val sections = scala.collection.mutable.ListBuffer[String]()
     
+    sections += s"Name: ${student.name}"
+    
+    // Academic performance with specific grades
+    if (student.topSubjects.nonEmpty) {
+      val courseDetails = student.topSubjects.map(s => 
+        s"  - ${s.subjectName}: ${s.grade} grade (${s.percentage}%)"
+      ).mkString("\n")
+      sections += s"Top Courses:\n$courseDetails"
+    }
+    
+    if (student.cgpa > 0.0) {
+      sections += s"Overall CGPA: ${student.cgpa}"
+    }
+    
+    // Academic interests
+    if (student.interests.nonEmpty) {
+      sections += s"Academic Areas: ${student.interests}"
+    }
+    
+    // User's specific interests and goals
     prefs.interests.foreach(i => 
-      sections += s"Student's Specific Interests: $i"
-    )
-    
-    prefs.preferredDifficulty.foreach(d => 
-      sections += s"Preferred Difficulty Level: $d"
-    )
-    
-    prefs.avoidTopics.foreach(a => 
-      sections += s"Topics to Avoid: $a"
+      sections += s"Specific Interests: $i"
     )
     
     prefs.additionalNotes.foreach(n => 
-      sections += s"Additional Notes: $n"
+      sections += s"Additional Context: $n"
     )
     
-    if (sections.nonEmpty) {
-      s"""
-Student's Personal Preferences:
-${sections.map(s => s"- $s").mkString("\n")}
-"""
-    } else {
-      ""
-    }
+    sections.mkString("\n")
   }
   
   private def callClaudeAPI(prompt: String): String = {
@@ -220,8 +204,8 @@ ${sections.map(s => s"- $s").mkString("\n")}
     
     val requestBody = s"""{
       "model": "claude-sonnet-4-20250514",
-      "max_tokens": 2000,
-      "temperature": 0.8,
+      "max_tokens": 3000,
+      "temperature": 0.9,
       "messages": [
         {
           "role": "user",
@@ -238,7 +222,7 @@ ${sections.map(s => s"- $s").mkString("\n")}
       .POST(HttpRequest.BodyPublishers.ofString(requestBody))
       .build()
     
-    println("Calling Claude API...")
+    println("Calling Claude API for creative project generation...")
     val response = client.send(request, HttpResponse.BodyHandlers.ofString())
     
     println(s"Claude API Status: ${response.statusCode()}")
@@ -247,7 +231,7 @@ ${sections.map(s => s"- $s").mkString("\n")}
       val jsonResponse = mapper.readTree(response.body())
       val content = jsonResponse.get("content").get(0).get("text").asText()
       
-      println(s"Claude Response: ${content.take(200)}...")
+      println(s"Claude Response: ${content.take(300)}...")
       
       val jsonStart = content.indexOf("[")
       val jsonEnd = content.lastIndexOf("]") + 1
@@ -266,8 +250,7 @@ ${sections.map(s => s"- $s").mkString("\n")}
   }
   
   private def parseRecommendations(
-    jsonResponse: String, 
-    projects: List[Project],
+    jsonResponse: String,
     student: StudentProfile
   ): List[ProjectRecommendation] = {
     try {
@@ -285,150 +268,58 @@ ${sections.map(s => s"- $s").mkString("\n")}
         recommendations += ProjectRecommendation(projectId, title, score, reason)
       }
       
-      println(s"Successfully parsed ${recommendations.size} recommendations")
+      println(s"Successfully generated ${recommendations.size} unique project recommendations")
       
-      // Verify uniqueness
-      val uniqueIds = recommendations.map(_.projectId).distinct
-      if (uniqueIds.size != recommendations.size) {
-        println("WARNING: AI returned duplicate projects, removing duplicates...")
-        recommendations.toList.distinctBy(_.projectId).take(3)
-      } else {
-        recommendations.toList.take(3)
-      }
+      recommendations.toList.take(3)
       
     } catch {
       case e: Exception =>
-        println(s"Error parsing recommendations: ${e.getMessage}")
+        println(s"Error parsing AI recommendations: ${e.getMessage}")
         e.printStackTrace()
-        getRuleBasedRecommendations(student, projects, List.empty, UserPreferences(None, None, None, None))
+        getFallbackRecommendations(student, UserPreferences(None, None, None, None))
     }
   }
   
   /**
-   * Fallback: Rule-based recommendation algorithm (no API needed)
+   * Fallback: Generate generic recommendations when API is unavailable
    */
-  private def getRuleBasedRecommendations(
+  private def getFallbackRecommendations(
     student: StudentProfile,
-    projects: List[Project],
-    excludeProjectIds: List[Int] = List.empty,
-    userPrefs: UserPreferences = UserPreferences(None, None, None, None)
+    userPrefs: UserPreferences
   ): List[ProjectRecommendation] = {
     
-    println("Using rule-based recommendation algorithm")
+    println("Using fallback generic recommendations")
     
-    // Filter out excluded projects and apply user preferences
-    var availableProjects = projects.filterNot(p => excludeProjectIds.contains(p.id))
+    val random = new Random()
     
-    // Filter by avoid topics
-    userPrefs.avoidTopics.foreach { avoid =>
-      val avoidKeywords = avoid.toLowerCase.split(",").map(_.trim)
-      availableProjects = availableProjects.filterNot(p =>
-        avoidKeywords.exists(keyword =>
-          p.title.toLowerCase.contains(keyword) ||
-          p.description.toLowerCase.contains(keyword) ||
-          p.requiredSkills.exists(_.toLowerCase.contains(keyword))
-        )
-      )
+    // Generate generic projects based on student's top subjects
+    val topSubject = if (student.topSubjects.nonEmpty) {
+      student.topSubjects.head.subjectName
+    } else {
+      "Software Development"
     }
     
-    val scoredProjects = availableProjects.map { project =>
-      var score = 0.0
-      val reasons = scala.collection.mutable.ListBuffer[String]()
-      
-      // Add some randomness to get different results each time
-      val randomBonus = Random.nextDouble() * 0.1
-      score += randomBonus
-      
-      // 1. Difficulty matching (30% weight)
-      val difficultyMatch = userPrefs.preferredDifficulty match {
-        case Some(prefDiff) =>
-          // User has explicit preference
-          if (project.difficultyLevel.equalsIgnoreCase(prefDiff)) {
-            reasons += s"Matches your preferred ${prefDiff.toLowerCase} difficulty level"
-            0.3
-          } else {
-            0.1
-          }
-        case None if student.cgpa > 0.0 =>
-          // Use CGPA if available
-          project.difficultyLevel.toLowerCase match {
-            case "beginner" if student.cgpa < 3.0 => 0.3
-            case "intermediate" if student.cgpa >= 3.0 && student.cgpa < 3.6 => 0.3
-            case "advanced" if student.cgpa >= 3.6 => 0.3
-            case "intermediate" if student.cgpa >= 2.5 => 0.2
-            case _ => 0.1
-          }
-        case None =>
-          // Use average subject performance
-          val avgPercentage = if (student.topSubjects.nonEmpty) {
-            student.topSubjects.map(_.percentage).sum / student.topSubjects.size
-          } else {
-            70.0
-          }
-          
-          project.difficultyLevel.toLowerCase match {
-            case "beginner" if avgPercentage < 70.0 => 0.3
-            case "intermediate" if avgPercentage >= 70.0 && avgPercentage < 85.0 => 0.3
-            case "advanced" if avgPercentage >= 85.0 => 0.3
-            case "intermediate" if avgPercentage >= 60.0 => 0.2
-            case _ => 0.1
-          }
-      }
-      score += difficultyMatch
-      
-      // 2. Subject/skill matching (40% weight)
-      val subjectNames = student.topSubjects.map(_.subjectName.toLowerCase).toSet
-      val matchingSkills = project.requiredSkills.filter(skill =>
-        subjectNames.exists(subj => 
-          subj.contains(skill.toLowerCase) || skill.toLowerCase.contains(subj)
-        )
+    val fallbackProjects = List(
+      ProjectRecommendation(
+        projectId = random.nextInt(9000) + 1000,
+        projectTitle = s"AI-Powered Application Using $topSubject Concepts",
+        matchScore = 0.75,
+        reason = s"This project would leverage your strong performance in $topSubject to build a practical application that demonstrates your skills."
+      ),
+      ProjectRecommendation(
+        projectId = random.nextInt(9000) + 1000,
+        projectTitle = "Full-Stack Web Development Project",
+        matchScore = 0.72,
+        reason = "A comprehensive web application that showcases your programming abilities and understanding of modern software development practices."
+      ),
+      ProjectRecommendation(
+        projectId = random.nextInt(9000) + 1000,
+        projectTitle = "Data Analysis and Visualization System",
+        matchScore = 0.70,
+        reason = "Build a system that analyzes real-world data and presents insights through interactive visualizations, applying your analytical skills."
       )
-      
-      if (matchingSkills.nonEmpty) {
-        val skillScore = (matchingSkills.size.toDouble / project.requiredSkills.size) * 0.4
-        score += skillScore
-        
-        val topMatch = student.topSubjects.find(s => 
-          matchingSkills.exists(skill => 
-            s.subjectName.toLowerCase.contains(skill.toLowerCase)
-          )
-        )
-        
-        topMatch.foreach(s => 
-          reasons += s"Your strong performance in ${s.subjectName} (${s.grade}, ${s.percentage}%) matches project requirements"
-        )
-      }
-      
-      // 3. User interests matching (30% weight)
-      val allInterests = List(
-        Option(student.interests).filter(_.nonEmpty),
-        userPrefs.interests
-      ).flatten.mkString(", ")
-      
-      if (allInterests.nonEmpty) {
-        val interests = allInterests.toLowerCase.split(",").map(_.trim)
-        val interestMatches = interests.count(interest =>
-          project.title.toLowerCase.contains(interest) ||
-          project.description.toLowerCase.contains(interest) ||
-          project.requiredSkills.exists(_.toLowerCase.contains(interest))
-        )
-        
-        if (interestMatches > 0) {
-          score += 0.3
-          reasons += s"Aligns with your interests in ${allInterests}"
-        }
-      }
-      
-      val finalReason = if (reasons.isEmpty) {
-        "Good match for your academic profile"
-      } else {
-        reasons.mkString(". ")
-      }
-      
-      ProjectRecommendation(project.id, project.title, score, finalReason)
-    }
+    )
     
-    // Shuffle to add more variety, then sort by score
-    Random.shuffle(scoredProjects).sortBy(rec => -rec.matchScore).take(3)
+    fallbackProjects
   }
 }

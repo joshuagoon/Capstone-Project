@@ -200,7 +200,6 @@ class AIRecommendationController {
           val projects = CapstoneProjects.getAll
           val recommendations = aiService.generateRecommendations(
             profile, 
-            projects,
             excludeIds,
             userPreferences
           )

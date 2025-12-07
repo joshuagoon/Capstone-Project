@@ -11,6 +11,11 @@ function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
   });
   const [isSaved, setIsSaved] = useState(false);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Load favorites and preferences on mount
   useEffect(() => {
     loadFavorites();
@@ -19,19 +24,38 @@ function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
 
   const loadFavorites = () => {
     const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
+    console.log('Raw favorites from localStorage:', savedFavorites);
+    
     if (savedFavorites) {
       try {
-        const favoriteIds = JSON.parse(savedFavorites);
-        // Load full favorite details from localStorage
-        const allRecommendations = localStorage.getItem(`all_recommendations_${studentId}`);
-        if (allRecommendations) {
-          const recs = JSON.parse(allRecommendations);
-          const favoriteProjects = recs.filter(rec => favoriteIds.includes(rec.projectId));
-          setFavorites(favoriteProjects);
+        const favoriteProjects = JSON.parse(savedFavorites);
+        console.log('Parsed favorites:', favoriteProjects);
+        
+        // Ensure it's an array
+        if (Array.isArray(favoriteProjects) && favoriteProjects.length > 0) {
+          // Check if it's an array of objects (not just IDs)
+          if (typeof favoriteProjects[0] === 'object' && favoriteProjects[0].projectTitle) {
+            console.log('Setting favorites (objects):', favoriteProjects);
+            setFavorites(favoriteProjects);
+          } else if (typeof favoriteProjects[0] === 'number') {
+            // If it's just IDs, try to get full details from all_recommendations
+            console.log('Favorites are just IDs, fetching full details...');
+            const allRecs = localStorage.getItem(`all_recommendations_${studentId}`);
+            if (allRecs) {
+              const allProjects = JSON.parse(allRecs);
+              const favoriteDetails = allProjects.filter(proj => 
+                favoriteProjects.includes(proj.projectId)
+              );
+              console.log('Loaded favorite details:', favoriteDetails);
+              setFavorites(favoriteDetails);
+            }
+          }
         }
       } catch (e) {
         console.error('Failed to load favorites:', e);
       }
+    } else {
+      console.log('No favorites found');
     }
   };
 
@@ -63,16 +87,16 @@ function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
   const handleRemoveFavorite = (projectId) => {
     const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
     if (savedFavorites) {
-      const favoriteIds = JSON.parse(savedFavorites);
-      const updated = favoriteIds.filter(id => id !== projectId);
+      const favoriteProjects = JSON.parse(savedFavorites);
+      const updated = favoriteProjects.filter(fav => fav.projectId !== projectId);
       localStorage.setItem(`favorites_${studentId}`, JSON.stringify(updated));
-      loadFavorites();
+      setFavorites(updated);
     }
   };
 
   const handleClearAllFavorites = () => {
     if (window.confirm('Are you sure you want to clear all favorites?')) {
-      localStorage.removeItem(`favorites_${studentId}`);
+      localStorage.setItem(`favorites_${studentId}`, JSON.stringify([]));
       setFavorites([]);
     }
   };
