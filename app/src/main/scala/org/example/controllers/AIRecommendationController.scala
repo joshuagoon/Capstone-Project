@@ -4,7 +4,6 @@ import org.springframework.web.bind.annotation._
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.{ResponseEntity, HttpStatus}
 import org.example.services.{AIRecommendationService, StudentDataService, StudentProfile, UserPreferences}
-import org.example.data.CapstoneProjects
 import org.example.repositories.RealStudentRepository
 import scala.beans.BeanProperty
 import scala.jdk.CollectionConverters._
@@ -45,18 +44,6 @@ class RecommendationResponse(
   @BeanProperty var reason: String
 ) {
   def this() = this(0, "", 0.0, "")
-}
-
-// Project response
-class ProjectResponse(
-  @BeanProperty var projectId: Int,
-  @BeanProperty var title: String,
-  @BeanProperty var description: String,
-  @BeanProperty var difficultyLevel: String,
-  @BeanProperty var requiredSkills: java.util.List[String],
-  @BeanProperty var supervisor: String
-) {
-  def this() = this(0, "", "", "", new java.util.ArrayList[String](), "")
 }
 
 @RestController
@@ -197,9 +184,9 @@ class AIRecommendationController {
       
       studentDataService.buildStudentProfile(studentId) match {
         case Some(profile) =>
-          val projects = CapstoneProjects.getAll
+          // Generate AI recommendations (no project list needed!)
           val recommendations = aiService.generateRecommendations(
-            profile, 
+            profile,
             excludeIds,
             userPreferences
           )
@@ -227,37 +214,6 @@ class AIRecommendationController {
         val errorMap = new java.util.HashMap[String, Any]()
         errorMap.put("error", e.getMessage)
         ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorMap)
-    }
-  }
-    
-  /**
-   * Get all available capstone projects
-   */
-  @GetMapping(Array("/projects"))
-  def getAllProjects(): java.util.List[ProjectResponse] = {
-    CapstoneProjects.getAll.map(p =>
-      new ProjectResponse(
-        p.id,
-        p.title,
-        p.description,
-        p.difficultyLevel,
-        p.requiredSkills.asJava,
-        p.supervisor
-      )
-    ).asJava
-  }
-  
-  /**
-   * Get project by ID
-   */
-  @GetMapping(Array("/projects/{id}"))
-  def getProjectById(@PathVariable id: Int): ResponseEntity[ProjectResponse] = {
-    CapstoneProjects.getById(id) match {
-      case Some(p) => ResponseEntity.ok(new ProjectResponse(
-        p.id, p.title, p.description, p.difficultyLevel, 
-        p.requiredSkills.asJava, p.supervisor
-      ))
-      case None => ResponseEntity.notFound().build()
     }
   }
   
