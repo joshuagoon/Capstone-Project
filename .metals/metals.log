@@ -335,3 +335,18 @@ org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Request window/showMessageRequ
 2025.12.04 11:00:09 INFO  Shutting down server
 2025.12.04 11:00:09 INFO  shutting down Metals
 2025.12.04 11:00:09 INFO  Exiting server
+2025.12.08 13:52:13 INFO  Started: Metals version 1.6.4 in folders 'C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project' for client Visual Studio Code 1.106.3.
+2025.12.08 13:52:18 WARN  Using H2 2.4.240 which is newer than the version Flyway has been verified with. The latest verified version of H2 is 2.3.232.
+2025.12.08 13:52:20 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 13:53:00 INFO  skipping build import with status 'Dismissed'
+2025.12.08 13:53:00 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 13:53:00 WARN  no build target for: C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala
+2025.12.08 13:53:04 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 13:53:07 INFO  time: code lens generation in 6.75s
+2025.12.08 13:54:55 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 13:55:38 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 14:11:36 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 14:44:48 INFO  no build target found for C:\Users\Joshua Goon\OneDrive\Documents\GitHub\Capstone-Project\app\src\main\scala\org\example\services\StudentDataService.scala. Using presentation compiler with project's scala-library version: 3.3.6
+2025.12.08 14:48:07 INFO  Shutting down server
+2025.12.08 14:48:07 INFO  shutting down Metals
+2025.12.08 14:48:07 INFO  Exiting server
