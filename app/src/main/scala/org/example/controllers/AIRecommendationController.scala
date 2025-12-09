@@ -270,6 +270,9 @@ class AIRecommendationController {
                 } else {
                   courseFull
                 }
+                
+                println(s"📝 Course name: '$courseName'")
+                
                 StudentSubject(
                   courseName = courseName,
                   grade = gradeMap("grade").toString,
@@ -286,6 +289,9 @@ class AIRecommendationController {
                 } else {
                   courseFull
                 }
+                
+                println(s"📝 Course name: '$courseName'")
+                
                 StudentSubject(
                   courseName = courseName,
                   grade = gradeMap.get("grade").toString,
@@ -297,6 +303,9 @@ class AIRecommendationController {
               println("⚠️ Could not extract grades, using empty list")
               List.empty[StudentSubject]
           }
+          
+          println(s"✅ Total subjects extracted: ${subjects.size}")
+          subjects.foreach(s => println(s"   - ${s.courseName}"))
           
           println(s"Extracted ${competencies.size} competencies and ${subjects.size} subjects")
           

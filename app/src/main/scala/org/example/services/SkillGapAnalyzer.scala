@@ -42,25 +42,205 @@ class SkillGapAnalyzer {
 
   // Skill keyword mappings to match project requirements with student competencies
   private val skillMappings = Map(
-    "artificial intelligence" -> List("artificial intelligence", "ai", "machine learning", "ml", "computational intelligence", "computer vision", "neural"),
-    "machine learning" -> List("artificial intelligence", "machine learning", "ml", "ai", "computational intelligence"),
-    "web development" -> List("web", "html", "javascript", "react", "frontend", "backend", "internet", "application development"),
-    "mobile development" -> List("mobile", "android", "ios", "app development", "application development"),
-    "data science" -> List("data science", "analytics", "statistics", "data mining", "data", "business intelligence"),
-    "data analysis" -> List("data science", "analytics", "data analysis", "data mining", "data", "visual analytics"),
-    "database" -> List("database", "sql", "data management", "information systems", "database management"),
-    "databases" -> List("database", "sql", "data management", "information systems", "database management"),
-    "cybersecurity" -> List("security", "cyber", "cryptography", "hacking", "cybersecurity", "network security", "forensic"),
-    "security" -> List("security", "cyber", "cryptography", "hacking", "cybersecurity", "network security"),
-    "networks" -> List("network", "networks", "communication", "distributed", "data communication"),
-    "networking" -> List("network", "networks", "communication", "distributed", "data communication"),
-    "software engineering" -> List("software engineering", "software", "architecture", "design pattern", "software process", "requirement"),
-    "programming" -> List("programming", "code", "software development", "object-oriented", "software", "problem solving"),
-    "ui/ux" -> List("ui/ux", "user interface", "design", "frontend", "web", "human computer interaction"),
-    "cloud computing" -> List("cloud", "aws", "azure", "distributed systems"),
-    "iot" -> List("iot", "internet of things", "embedded", "sensors", "digital systems", "electronics"),
-    "blockchain" -> List("blockchain", "smart contracts", "distributed ledger", "cryptography")
-  )
+    "artificial intelligence" -> List(
+        "artificial intelligence",
+        "artificialintelligence",
+        "ai",
+        "machine learning",
+        "machinelearning",
+        "ml",
+        "computational intelligence", 
+        "computationalintelligence",
+        "computer vision", 
+        "computervision",
+        "neural"
+    ),
+    
+    "machine learning" -> List(
+        "artificial intelligence", 
+        "artificialintelligence",
+        "machine learning", 
+        "machinelearning",
+        "ml", 
+        "ai", 
+        "computational intelligence",
+        "computationalintelligence"
+    ),
+    
+    "web development" -> List(
+        "web", 
+        "html", 
+        "javascript", 
+        "react", 
+        "frontend", 
+        "backend", 
+        "internet", 
+        "application development",
+        "applicationdevelopment"
+    ),
+    
+    "mobile development" -> List(
+        "mobile", 
+        "android", 
+        "ios", 
+        "app development", 
+        "appdevelopment",
+        "application development",
+        "applicationdevelopment"
+    ),
+    
+    "data science" -> List(
+        "data science", 
+        "datascience",
+        "analytics", 
+        "statistics", 
+        "data mining", 
+        "datamining",
+        "data", 
+        "business intelligence",
+        "businessintelligence"
+    ),
+    
+    "data analysis" -> List(
+        "data science", 
+        "datascience",
+        "analytics", 
+        "data analysis", 
+        "dataanalysis",
+        "data mining", 
+        "datamining",
+        "data", 
+        "visual analytics",
+        "visualanalytics"
+    ),
+    
+    "database" -> List(
+        "database", 
+        "sql", 
+        "data management", 
+        "datamanagement",
+        "information systems",
+        "informationsystems", 
+        "database management",
+        "databasemanagement"
+    ),
+    
+    "databases" -> List(
+        "database", 
+        "sql", 
+        "data management", 
+        "datamanagement",
+        "information systems",
+        "informationsystems", 
+        "database management",
+        "databasemanagement"
+    ),
+    
+    "cybersecurity" -> List(
+        "security", 
+        "cyber", 
+        "cryptography", 
+        "hacking", 
+        "cybersecurity", 
+        "network security",
+        "networksecurity", 
+        "forensic"
+    ),
+    
+    "security" -> List(
+        "security", 
+        "cyber", 
+        "cryptography", 
+        "hacking", 
+        "cybersecurity", 
+        "network security",
+        "networksecurity"
+    ),
+    
+    "networks" -> List(
+        "network", 
+        "networks", 
+        "communication", 
+        "distributed", 
+        "data communication",
+        "datacommunication",
+        "distributedsystems"
+    ),
+    
+    "networking" -> List(
+        "network", 
+        "networks", 
+        "communication", 
+        "distributed", 
+        "data communication",
+        "datacommunication"
+    ),
+    
+    "software engineering" -> List(
+        "software engineering", 
+        "softwareengineering",
+        "software", 
+        "architecture", 
+        "design pattern", 
+        "designpattern",
+        "software process", 
+        "softwareprocess",
+        "requirement"
+    ),
+    
+    "programming" -> List(
+        "programming", 
+        "code", 
+        "software development", 
+        "softwaredevelopment",
+        "object-oriented",
+        "objectoriented", 
+        "software", 
+        "problem solving",
+        "problemsolving"
+    ),
+    
+    "ui/ux" -> List(
+        "ui/ux", 
+        "uiux",
+        "user interface", 
+        "userinterface",
+        "design", 
+        "frontend", 
+        "web", 
+        "human computer interaction",
+        "humancomputerinteraction"
+    ),
+    
+    "cloud computing" -> List(
+        "cloud", 
+        "aws", 
+        "azure", 
+        "distributed systems",
+        "distributedsystems",
+        "cloudcomputing"
+    ),
+    
+    "iot" -> List(
+        "iot", 
+        "internet of things", 
+        "internetofthings",
+        "embedded", 
+        "sensors", 
+        "digital systems",
+        "digitalsystems", 
+        "electronics"
+    ),
+    
+    "blockchain" -> List(
+        "blockchain", 
+        "smart contracts", 
+        "smartcontracts",
+        "distributed ledger", 
+        "distributedledger",
+        "cryptography"
+    )
+    )
 
   /**
    * Main method to analyze skill gaps WITH student subject data
@@ -132,24 +312,54 @@ class SkillGapAnalyzer {
   private def findRelatedCourses(
     skill: String,
     subjects: List[StudentSubject]
-  ): List[StudentSubject] = {
+    ): List[StudentSubject] = {
     
     val normalizedSkill = skill.toLowerCase.trim
     val keywords = skillMappings.getOrElse(normalizedSkill, List(normalizedSkill))
     
-    println(s"🔍 Finding courses for: $skill")
-    println(s"   Keywords: ${keywords.mkString(", ")}")
+    println(s"\n🔍 Finding courses for skill: '$skill'")
+    println(s"   Normalized skill: '$normalizedSkill'")
+    println(s"   Keywords to match: ${keywords.mkString(", ")}")
+    println(s"   Total subjects to search: ${subjects.size}")
     
     val matchedCourses = subjects.filter { subject =>
-      val courseNameLower = subject.courseName.toLowerCase
-      keywords.exists(kw => courseNameLower.contains(kw))
+        val courseName = subject.courseName.toLowerCase.trim
+        
+        // Remove all spaces and special characters for fuzzy matching
+        val courseNameNoSpaces = courseName.replaceAll("[\\s-_]+", "")
+        
+        println(s"   Checking course: '$courseName' (normalized: '$courseNameNoSpaces')")
+        
+        val matches = keywords.exists { keyword =>
+        val keywordNoSpaces = keyword.replaceAll("[\\s-_]+", "")
+        
+        // Try multiple matching strategies
+        val exactMatch = courseName.contains(keyword)
+        val noSpaceMatch = courseNameNoSpaces.contains(keywordNoSpaces)
+        val reverseMatch = keyword.contains(courseName)
+        val partialMatch = courseName.split("\\s+").exists(word => 
+            keyword.split("\\s+").exists(kw => word.startsWith(kw) || kw.startsWith(word))
+        )
+        
+        val matched = exactMatch || noSpaceMatch || reverseMatch || partialMatch
+        
+        if (matched) {
+            println(s"      ✅ MATCHED with keyword '$keyword'")
+        }
+        
+        matched
+        }
+        
+        matches
     }.sortBy(-_.percentage)
     
-    println(s"   Found ${matchedCourses.size} related courses")
-    matchedCourses.foreach(c => println(s"     - ${c.courseName}: ${c.grade} (${c.percentage.toInt}%)"))
+    println(s"   ✅ Found ${matchedCourses.size} matching courses:")
+    matchedCourses.foreach(c => 
+        println(s"      - ${c.courseName}: ${c.grade} (${c.percentage.toInt}%)")
+    )
     
     matchedCourses
-  }
+    }
   
   /**
    * Generate personalized recommendations based on actual courses

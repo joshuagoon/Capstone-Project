@@ -159,6 +159,33 @@
   padding: 1rem;
 }
 
+.grades-table-full th:nth-child(2) {
+  text-align: center;
+}
+
+.grades-table-full th:nth-child(3) {
+  text-align: center;
+}
+
+.grades-table-full th:nth-child(4) {
+  text-align: center;
+}
+
+.grades-table-full tbody td:nth-child(2) {
+  text-align: center;
+}
+
+.grades-table-full tbody td:nth-child(3) {
+  text-align: center;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.grades-table-full tbody td:nth-child(4) {
+  text-align: center;
+  color: #666;
+}
+
 .course-cell {
   font-weight: 500;
   color: #2c3e50;
