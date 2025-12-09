@@ -1,33 +1,60 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_URL = 'http://localhost:8080/api';
 
-export const login = (studentId) => {
-  return axios.post(`${API_BASE_URL}/login`, { studentId });
+export const login = async (studentId) => {
+  try {
+    const response = await axios.post(`${API_URL}/login`, { studentId });
+    return response;
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
 };
 
-export const getStudentPerformance = (studentId) => {
-  return axios.get(`${API_BASE_URL}/performance/${studentId}`);
+export const getStudentPerformance = async (studentId) => {
+  try {
+    const response = await axios.get(`${API_URL}/performance/${studentId}`);
+    return response;
+  } catch (error) {
+    console.error('Performance fetch error:', error);
+    throw error;
+  }
 };
 
-export const getAIRecommendations = async (studentId, excludeIds = [], preferences = null) => {
-  let url = `${API_BASE_URL}/recommendations/${studentId}`;
-  const params = new URLSearchParams();
-  
-  if (excludeIds.length > 0) {
-    params.append('exclude', excludeIds.join(','));
+export const getAIRecommendations = async (studentId, excludeIds = [], preferences = {}) => {
+  try {
+    const params = {
+      exclude: excludeIds.join(',')
+    };
+
+    // Add preferences if provided
+    if (preferences.interests) params.interests = preferences.interests;
+    if (preferences.preferredDifficulty) params.difficulty = preferences.preferredDifficulty;
+    if (preferences.avoidTopics) params.avoid = preferences.avoidTopics;
+    if (preferences.additionalNotes) params.notes = preferences.additionalNotes;
+
+    const response = await axios.get(`${API_URL}/recommendations/${studentId}`, { params });
+    return response;
+  } catch (error) {
+    console.error('Recommendations fetch error:', error);
+    throw error;
   }
-  
-  if (preferences) {
-    if (preferences.interests) params.append('interests', preferences.interests);
-    if (preferences.preferredDifficulty) params.append('difficulty', preferences.preferredDifficulty);
-    if (preferences.avoidTopics) params.append('avoid', preferences.avoidTopics);
-    if (preferences.additionalNotes) params.append('notes', preferences.additionalNotes);
+};
+
+export const analyzeSkillGap = async (studentId, projectSkills, projectTitle, projectDifficulty) => {
+  try {
+    const response = await axios.get(`${API_URL}/skill-gap/${studentId}`, {
+      params: {
+        projectTitle: projectTitle,
+        projectSkills: projectSkills,
+        projectDifficulty: projectDifficulty
+      }
+    });
+    return response;
+  } catch (error) {
+    console.error('Skill gap analysis error:', error);
+    console.error('Error response:', error.response?.data);
+    throw error;
   }
-  
-  if (params.toString()) {
-    url += `?${params.toString()}`;
-  }
-  
-  return axios.get(url);
 };

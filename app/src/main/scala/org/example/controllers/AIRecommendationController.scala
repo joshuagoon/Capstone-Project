@@ -3,7 +3,7 @@ package org.example.controllers
 import org.springframework.web.bind.annotation._
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.{ResponseEntity, HttpStatus}
-import org.example.services.{AIRecommendationService, StudentDataService, StudentProfile, UserPreferences}
+import org.example.services.{AIRecommendationService, StudentDataService, SkillGapAnalyzer, StudentProfile, UserPreferences, StudentSubject}
 import org.example.repositories.RealStudentRepository
 import scala.beans.BeanProperty
 import scala.jdk.CollectionConverters._
@@ -59,6 +59,9 @@ class AIRecommendationController {
   
   @Autowired
   private var studentRepository: RealStudentRepository = _
+  
+  @Autowired
+  private var skillGapAnalyzer: SkillGapAnalyzer = _
 
   /**
    * Login endpoint - verify student ID exists
@@ -213,6 +216,151 @@ class AIRecommendationController {
         e.printStackTrace()
         val errorMap = new java.util.HashMap[String, Any]()
         errorMap.put("error", e.getMessage)
+        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorMap)
+    }
+  }
+
+  /**
+   * Analyze skill gap for a specific project
+   */
+  @GetMapping(Array("/skill-gap/{studentId}"))
+  def analyzeSkillGap(
+    @PathVariable studentId: Int,
+    @RequestParam projectTitle: String,
+    @RequestParam projectSkills: String,
+    @RequestParam projectDifficulty: String
+  ): ResponseEntity[_] = {
+    try {
+      println(s"Skill gap analysis request for student $studentId")
+      println(s"Project: $projectTitle, Skills: $projectSkills, Difficulty: $projectDifficulty")
+      
+      studentDataService.getStudentPerformance(studentId) match {
+        case Some(performance) =>
+          // Extract competencies
+          val competencies = performance.get("competencies") match {
+            case Some(scalaList: List[_]) =>
+              scalaList.map { comp =>
+                val compMap = comp.asInstanceOf[Map[String, Any]]
+                val name = compMap("name").toString
+                val score = compMap("score").asInstanceOf[Int].toDouble
+                name -> score
+              }.toMap
+              
+            case Some(javaList: java.util.List[_]) =>
+              javaList.asScala.toList.map { comp =>
+                val compMap = comp.asInstanceOf[java.util.Map[String, Any]]
+                val name = compMap.get("name").toString
+                val score = compMap.get("score").asInstanceOf[Int].toDouble
+                name -> score
+              }.toMap
+              
+            case _ =>
+              println("⚠️ Could not extract competencies, using empty map")
+              Map.empty[String, Double]
+          }
+          
+          // Extract subject data (grades)
+          val subjects = performance.get("grades") match {
+            case Some(scalaList: List[_]) =>
+              scalaList.map { grade =>
+                val gradeMap = grade.asInstanceOf[Map[String, Any]]
+                val courseFull = gradeMap("course").toString
+                val courseName = if (courseFull.contains(" - ")) {
+                  courseFull.split(" - ")(1)
+                } else {
+                  courseFull
+                }
+                StudentSubject(
+                  courseName = courseName,
+                  grade = gradeMap("grade").toString,
+                  percentage = gradeMap("percentage").asInstanceOf[Double]
+                )
+              }
+              
+            case Some(javaList: java.util.List[_]) =>
+              javaList.asScala.toList.map { grade =>
+                val gradeMap = grade.asInstanceOf[java.util.Map[String, Any]]
+                val courseFull = gradeMap.get("course").toString
+                val courseName = if (courseFull.contains(" - ")) {
+                  courseFull.split(" - ")(1)
+                } else {
+                  courseFull
+                }
+                StudentSubject(
+                  courseName = courseName,
+                  grade = gradeMap.get("grade").toString,
+                  percentage = gradeMap.get("percentage").asInstanceOf[Number].doubleValue()
+                )
+              }
+              
+            case _ =>
+              println("⚠️ Could not extract grades, using empty list")
+              List.empty[StudentSubject]
+          }
+          
+          println(s"Extracted ${competencies.size} competencies and ${subjects.size} subjects")
+          
+          // Parse skills (comma-separated)
+          val skills = projectSkills.split(",").map(_.trim).toList
+          
+          // Perform analysis WITH subject data
+          val analysis = skillGapAnalyzer.analyzeSkillGapWithSubjects(
+            competencies,
+            subjects,
+            projectTitle,
+            skills,
+            projectDifficulty
+          )
+          
+          // Convert to Java-compatible format for JSON response
+          val response = new java.util.HashMap[String, Any]()
+          response.put("projectTitle", analysis.projectTitle)
+          response.put("projectDifficulty", analysis.projectDifficulty)
+          response.put("overallReadiness", analysis.overallReadiness)
+          response.put("readinessLevel", analysis.readinessLevel)
+          response.put("estimatedPrepTime", analysis.estimatedPrepTime)
+          
+          // Convert strong areas
+          val strongAreasJava = analysis.strongAreas.map { skill =>
+            val skillMap = new java.util.HashMap[String, Any]()
+            skillMap.put("skillName", skill.skillName)
+            skillMap.put("currentScore", skill.currentScore)
+            skillMap.put("requiredScore", skill.requiredScore)
+            skillMap.put("gap", skill.gap)
+            skillMap.put("status", skill.status)
+            skillMap.put("recommendation", skill.recommendation)
+            skillMap.put("relatedCourses", skill.relatedCourses.asJava)
+            skillMap
+          }.asJava
+          response.put("strongAreas", strongAreasJava)
+          
+          // Convert areas to improve
+          val areasToImproveJava = analysis.areasToImprove.map { skill =>
+            val skillMap = new java.util.HashMap[String, Any]()
+            skillMap.put("skillName", skill.skillName)
+            skillMap.put("currentScore", skill.currentScore)
+            skillMap.put("requiredScore", skill.requiredScore)
+            skillMap.put("gap", skill.gap)
+            skillMap.put("status", skill.status)
+            skillMap.put("recommendation", skill.recommendation)
+            skillMap.put("relatedCourses", skill.relatedCourses.asJava)
+            skillMap
+          }.asJava
+          response.put("areasToImprove", areasToImproveJava)
+          
+          ResponseEntity.ok(response)
+          
+        case None =>
+          val errorMap = new java.util.HashMap[String, Any]()
+          errorMap.put("error", s"Student $studentId not found")
+          ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMap)
+      }
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        val errorMap = new java.util.HashMap[String, Any]()
+        errorMap.put("error", e.getMessage)
+        errorMap.put("details", e.getClass.getName + ": " + e.getMessage)
         ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorMap)
     }
   }

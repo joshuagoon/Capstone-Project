@@ -1,6 +1,90 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Recommendations.css';
 import { getAIRecommendations } from '../services/api';
+import SkillGapAnalysis from './SkillGapAnalysis';
+
+// Helper function to extract skills from project
+const extractSkillsFromProject = (projectTitle, projectReason) => {
+  const skillKeywords = {
+    'artificial intelligence': 'Artificial Intelligence',
+    'machine learning': 'Artificial Intelligence',
+    'ai': 'Artificial Intelligence',
+    'ml': 'Artificial Intelligence',
+    'deep learning': 'Artificial Intelligence',
+    'neural': 'Artificial Intelligence',
+    
+    'web development': 'Web Development',
+    'web': 'Web Development',
+    'frontend': 'Web Development',
+    'backend': 'Web Development',
+    'react': 'Web Development',
+    'html': 'Web Development',
+    'javascript': 'Web Development',
+    
+    'mobile': 'Mobile Development',
+    'android': 'Mobile Development',
+    'ios': 'Mobile Development',
+    'app': 'Mobile Development',
+    
+    'database': 'Database',
+    'sql': 'Database',
+    'data management': 'Database',
+    
+    'network': 'Networks',
+    'networking': 'Networks',
+    'distributed': 'Networks',
+    'communication': 'Networks',
+    
+    'security': 'Cybersecurity',
+    'cyber': 'Cybersecurity',
+    'cryptography': 'Cybersecurity',
+    
+    'cloud': 'Cloud Computing',
+    'aws': 'Cloud Computing',
+    'azure': 'Cloud Computing',
+    
+    'iot': 'IoT',
+    'sensor': 'IoT',
+    'embedded': 'IoT',
+    
+    'data science': 'Data Analysis',
+    'analytics': 'Data Analysis',
+    'data analysis': 'Data Analysis',
+    
+    'programming': 'Programming',
+    'software': 'Software Engineering',
+    'blockchain': 'Blockchain'
+  };
+
+  const foundSkills = new Set();
+  const textToSearch = (projectTitle + ' ' + projectReason).toLowerCase();
+
+  Object.entries(skillKeywords).forEach(([keyword, skillName]) => {
+    if (textToSearch.includes(keyword)) {
+      foundSkills.add(skillName);
+    }
+  });
+
+  const skillsArray = Array.from(foundSkills).slice(0, 4);
+  
+  if (skillsArray.length === 0) {
+    return 'Programming,Software Engineering';
+  }
+
+  return skillsArray.join(',');
+};
+
+const extractDifficultyFromProject = (projectReason) => {
+  const text = projectReason.toLowerCase();
+  
+  if (text.includes('advanced') || text.includes('complex') || text.includes('challenging') || text.includes('sophisticated')) {
+    return 'Advanced';
+  } else if (text.includes('beginner') || text.includes('simple') || text.includes('basic') || text.includes('foundational')) {
+    return 'Beginner';
+  } else {
+    return 'Intermediate';
+  }
+};
 
 function Recommendations({ studentId, userPreferences, onBack }) {
   const [allRecommendations, setAllRecommendations] = useState([]);
@@ -10,20 +94,20 @@ function Recommendations({ studentId, userPreferences, onBack }) {
   const [regeneratingIndex, setRegeneratingIndex] = useState(null);
   const [error, setError] = useState(null);
   
-  // Use ref to prevent double fetching
+  // Skill Gap Modal state
+  const [showSkillGap, setShowSkillGap] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  
   const hasFetchedRef = useRef(false);
 
-  // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Load favorites from localStorage on mount
   useEffect(() => {
     loadFavorites();
   }, [studentId]);
 
-  // Fetch recommendations on component mount (only once!)
   useEffect(() => {
     if (!hasFetchedRef.current) {
       hasFetchedRef.current = true;
@@ -45,17 +129,8 @@ function Recommendations({ studentId, userPreferences, onBack }) {
   };
 
   const saveFavorites = (newFavorites) => {
-    // Save favorites list (array of full project objects)
     localStorage.setItem(`favorites_${studentId}`, JSON.stringify(newFavorites));
-    
-    // Also save just the IDs for backward compatibility
-    const favoriteIds = newFavorites.map(fav => fav.projectId);
-    
-    // Save complete project details for PreferencesPage to access
     localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(newFavorites));
-    
-    console.log('Saved favorites:', newFavorites);
-    console.log('Saved favorite IDs:', favoriteIds);
   };
 
   const fetchRecommendations = async () => {
@@ -64,11 +139,9 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setError(null);
       const response = await getAIRecommendations(studentId, [], userPreferences);
       
-      // Store all recommendations
       setAllRecommendations(response.data);
       setDisplayedRecommendations(response.data);
       
-      // Save to localStorage for favorites page access
       const currentRecs = response.data.map(rec => ({
         projectId: rec.projectId,
         projectTitle: rec.projectTitle,
@@ -76,11 +149,9 @@ function Recommendations({ studentId, userPreferences, onBack }) {
         reason: rec.reason
       }));
       
-      // Merge with existing favorites
       const existingFavorites = favorites;
       const allProjects = [...existingFavorites, ...currentRecs];
       
-      // Remove duplicates by projectId
       const uniqueProjects = allProjects.filter((proj, index, self) =>
         index === self.findIndex(p => p.projectId === proj.projectId)
       );
@@ -98,12 +169,10 @@ function Recommendations({ studentId, userPreferences, onBack }) {
     const isFavorited = favorites.some(fav => fav.projectId === rec.projectId);
     
     if (isFavorited) {
-      // Remove from favorites
       const newFavorites = favorites.filter(fav => fav.projectId !== rec.projectId);
       setFavorites(newFavorites);
       saveFavorites(newFavorites);
     } else {
-      // Add to favorites - save full project details
       const favoriteProject = {
         projectId: rec.projectId,
         projectTitle: rec.projectTitle,
@@ -125,22 +194,16 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setRegeneratingIndex(index);
       setError(null);
       
-      // Get all currently displayed project IDs to exclude
       const excludeIds = displayedRecommendations.map(rec => rec.projectId);
-      
-      // Fetch new recommendations excluding current ones
       const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
       if (response.data.length > 0) {
-        // Replace at index with first new recommendation
         const newDisplayed = [...displayedRecommendations];
         newDisplayed[index] = response.data[0];
         setDisplayedRecommendations(newDisplayed);
         
-        // Add to pool
         setAllRecommendations([...allRecommendations, ...response.data]);
         
-        // Update localStorage
         const allProjects = [...favorites, ...newDisplayed];
         const uniqueProjects = allProjects.filter((proj, idx, self) =>
           idx === self.findIndex(p => p.projectId === proj.projectId)
@@ -162,16 +225,13 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setLoading(true);
       setError(null);
       
-      // Keep favorited projects
       const favoritedProjects = displayedRecommendations.filter(rec => 
         isFavorited(rec.projectId)
       );
       const excludeIds = favoritedProjects.map(rec => rec.projectId);
       
-      // Get new recommendations
       const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
-      // Build new displayed list: keep favorites, add new recommendations
       const newDisplayed = [];
       let newRecIndex = 0;
       
@@ -187,7 +247,6 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setDisplayedRecommendations(newDisplayed);
       setAllRecommendations([...allRecommendations, ...response.data]);
       
-      // Update localStorage
       const allProjects = [...favorites, ...newDisplayed];
       const uniqueProjects = allProjects.filter((proj, idx, self) =>
         idx === self.findIndex(p => p.projectId === proj.projectId)
@@ -268,6 +327,16 @@ function Recommendations({ studentId, userPreferences, onBack }) {
 
             <div className="card-footer">
               <button
+                onClick={() => {
+                  setSelectedProject(rec);
+                  setShowSkillGap(true);
+                }}
+                className="skill-gap-button"
+              >
+                📊 Analyze Skill Gap
+              </button>
+              
+              <button
                 onClick={() => handleRegenerate(index)}
                 className="regenerate-button"
                 disabled={regeneratingIndex === index || isFavorited(rec.projectId)}
@@ -289,6 +358,23 @@ function Recommendations({ studentId, userPreferences, onBack }) {
           {loading ? '🔄 Regenerating...' : '🔄 Regenerate All (Keep Favorites)'}
         </button>
       </div>
+
+      {/* Skill Gap Modal */}
+      {showSkillGap && selectedProject && (
+        <SkillGapAnalysis
+          studentId={studentId}
+          projectTitle={selectedProject.projectTitle}
+          projectSkills={extractSkillsFromProject(
+            selectedProject.projectTitle,
+            selectedProject.reason
+          )}
+          projectDifficulty={extractDifficultyFromProject(selectedProject.reason)}
+          onClose={() => {
+            setShowSkillGap(false);
+            setSelectedProject(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -126,7 +126,7 @@ class StudentDataService {
         "gpa" -> (if (student.overallCgpa != null) student.overallCgpa.doubleValue() else 0.0),
         "completedCourses" -> studentSubjects.size,
         "competencies" -> competencies,
-        "grades" -> allGrades  // ALL grades, not just 5
+        "grades" -> allGrades
       )
     }
   }
@@ -145,7 +145,7 @@ class StudentDataService {
       // Artificial Intelligence & Machine Learning
       "Artificial Intelligence" -> List(
         "artificial intelligence", "machine learning", "computational intelligence",
-        "computer vision", "neural"
+        "computer vision", "neural", "ai", "ml"
       ),
       
       // Data Science & Analytics
@@ -219,6 +219,6 @@ class StudentDataService {
       } else {
         None
       }
-    }.flatten.toList.sortBy(m => -m("score").asInstanceOf[Int]).take(5)
+    }.flatten.toList.sortBy(m => -m("score").asInstanceOf[Int])
   }
 }
