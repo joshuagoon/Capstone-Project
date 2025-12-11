@@ -88,6 +88,8 @@
   border-radius: 8px;
   font-size: 0.9rem;
   border-left: 4px solid #e74c3c;
+  max-width: 100%;
+  text-align: center;
 }
 
 .login-button {

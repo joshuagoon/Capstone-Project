@@ -47,11 +47,13 @@ function Login({ onLoginSuccess }) {
           <div className="form-group">
             <label htmlFor="studentId">Student ID</label>
             <input
-              type="number"
+              type="text"
               id="studentId"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               placeholder="Enter your student ID"
+              pattern="[0-9]*"
+              inputMode="numeric"
               required
               autoFocus
             />
