@@ -359,6 +359,10 @@ class SkillGapAnalyzer {
     )
     
     matchedCourses
+      .groupBy(_.courseName)
+      .map { case (_, courses) => courses.maxBy(_.percentage) }
+      .toList
+      .sortBy(-_.percentage)
     }
   
   /**
@@ -513,7 +517,7 @@ class SkillGapAnalyzer {
     else if (complexityFactor <= 5) "3-4 weeks"
     else if (complexityFactor <= 8) "6-8 weeks"
     else if (complexityFactor <= 12) "2-3 months"
-    else "3-4 months (Consider a different project)"
+    else "3-4 months"
   }
   
   /**
@@ -524,6 +528,6 @@ class SkillGapAnalyzer {
     else if (readiness >= 75) "Ready with Minor Prep"
     else if (readiness >= 60) "Moderate Preparation Needed"
     else if (readiness >= 40) "Significant Preparation Needed"
-    else "Not Recommended - Consider Another Project"
+    else "Significant Prepration Needed"
   }
 }

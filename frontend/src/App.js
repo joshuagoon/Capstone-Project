@@ -165,7 +165,9 @@ function App() {
               <>
                 <h3>Competencies</h3>
                 <div className="competencies">
-                  {performance.competencies.map((comp, index) => (
+                  {performance.competencies
+                    .filter(comp => comp.score > 0)
+                    .map((comp, index) => (
                     <div key={index} className="competency">
                       <div className="competency-header">
                         <span>{comp.name}</span>

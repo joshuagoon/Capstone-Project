@@ -208,7 +208,7 @@ class StudentDataService {
         
         val level = if (avgScore >= 90) "Expert"
                   else if (avgScore >= 75) "Advanced"
-                  else if (avgScore >= 60) "Intermediate"
+                  else if (avgScore >= 50) "Intermediate"
                   else "Beginner"
         
         Some(Map(
