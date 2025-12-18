@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './SkillGapAnalysis.css';
-import { analyzeSkillGap } from '../services/api';
+import { analyseSkillGap } from '../services/api';
 
 function SkillGapAnalysis({ studentId, projectTitle, projectSkills, projectDifficulty, onClose }) {
   const [analysis, setAnalysis] = useState(null);
@@ -8,10 +8,10 @@ function SkillGapAnalysis({ studentId, projectTitle, projectSkills, projectDiffi
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    handleAnalyze();
+    handleAnalyse();
   }, []);
 
-  const handleAnalyze = async () => {
+  const handleAnalyse = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -23,7 +23,7 @@ function SkillGapAnalysis({ studentId, projectTitle, projectSkills, projectDiffi
         projectDifficulty
       });
 
-      const response = await analyzeSkillGap(
+      const response = await analyseSkillGap(
         studentId, 
         projectSkills,
         projectTitle,
@@ -35,7 +35,7 @@ function SkillGapAnalysis({ studentId, projectTitle, projectSkills, projectDiffi
     } catch (err) {
       console.error('Failed to fetch prediction:', err);
       console.error('Error details:', err.response?.data);
-      setError('Failed to analyze skill gap. Please try again.');
+      setError('Failed to analyse skill gap. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ function SkillGapAnalysis({ studentId, projectTitle, projectSkills, projectDiffi
         <div className="skill-gap-content" onClick={(e) => e.stopPropagation()}>
           <div className="loading-spinner">
             <div className="spinner"></div>
-            <p>Analyzing your skills...</p>
+            <p>Analysing your skills...</p>
           </div>
         </div>
       </div>
@@ -62,7 +62,7 @@ function SkillGapAnalysis({ studentId, projectTitle, projectSkills, projectDiffi
           <div className="error-message">
             <h3>❌ Error</h3>
             <p>{error}</p>
-            <button onClick={handleAnalyze} className="retry-button">Try Again</button>
+            <button onClick={handleAnalyse} className="retry-button">Try Again</button>
           </div>
         </div>
       </div>

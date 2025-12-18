@@ -89,7 +89,7 @@ const extractDifficultyFromProject = (projectReason) => {
 function Recommendations({ studentId, userPreferences, onBack }) {
   const [allRecommendations, setAllRecommendations] = useState([]);
   const [displayedRecommendations, setDisplayedRecommendations] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [regeneratingIndex, setRegeneratingIndex] = useState(null);
   const [error, setError] = useState(null);
@@ -105,7 +105,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
   }, []);
 
   useEffect(() => {
-    loadFavorites();
+    loadFavourites();
   }, [studentId]);
 
   useEffect(() => {
@@ -115,22 +115,22 @@ function Recommendations({ studentId, userPreferences, onBack }) {
     }
   }, []);
 
-  const loadFavorites = () => {
-    const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
-    if (savedFavorites) {
+  const loadFavourites = () => {
+    const savedFavourites = localStorage.getItem(`favourites_${studentId}`);
+    if (savedFavourites) {
       try {
-        const favProjects = JSON.parse(savedFavorites);
-        setFavorites(favProjects);
-        console.log('Loaded favorites:', favProjects);
+        const favProjects = JSON.parse(savedFavourites);
+        setFavourites(favProjects);
+        console.log('Loaded favourites:', favProjects);
       } catch (e) {
-        console.error('Failed to load favorites:', e);
+        console.error('Failed to load favourites:', e);
       }
     }
   };
 
-  const saveFavorites = (newFavorites) => {
-    localStorage.setItem(`favorites_${studentId}`, JSON.stringify(newFavorites));
-    localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(newFavorites));
+  const saveFavourites = (newFavourites) => {
+    localStorage.setItem(`favourites_${studentId}`, JSON.stringify(newFavourites));
+    localStorage.setItem(`all_recommendations_${studentId}`, JSON.stringify(newFavourites));
   };
 
   const fetchRecommendations = async () => {
@@ -149,8 +149,8 @@ function Recommendations({ studentId, userPreferences, onBack }) {
         reason: rec.reason
       }));
       
-      const existingFavorites = favorites;
-      const allProjects = [...existingFavorites, ...currentRecs];
+      const existingFavourites = favourites;
+      const allProjects = [...existingFavourites, ...currentRecs];
       
       const uniqueProjects = allProjects.filter((proj, index, self) =>
         index === self.findIndex(p => p.projectId === proj.projectId)
@@ -165,28 +165,28 @@ function Recommendations({ studentId, userPreferences, onBack }) {
     }
   };
 
-  const handleFavorite = (rec) => {
-    const isFavorited = favorites.some(fav => fav.projectId === rec.projectId);
+  const handleFavourite = (rec) => {
+    const isFavourited = favourites.some(fav => fav.projectId === rec.projectId);
     
-    if (isFavorited) {
-      const newFavorites = favorites.filter(fav => fav.projectId !== rec.projectId);
-      setFavorites(newFavorites);
-      saveFavorites(newFavorites);
+    if (isFavourited) {
+      const newFavourites = favourites.filter(fav => fav.projectId !== rec.projectId);
+      setFavourites(newFavourites);
+      saveFavourites(newFavourites);
     } else {
-      const favoriteProject = {
+      const favouriteProject = {
         projectId: rec.projectId,
         projectTitle: rec.projectTitle,
         score: rec.score,
         reason: rec.reason
       };
-      const newFavorites = [...favorites, favoriteProject];
-      setFavorites(newFavorites);
-      saveFavorites(newFavorites);
+      const newFavourites = [...favourites, favouriteProject];
+      setFavourites(newFavourites);
+      saveFavourites(newFavourites);
     }
   };
 
-  const isFavorited = (projectId) => {
-    return favorites.some(fav => fav.projectId === projectId);
+  const isFavourited = (projectId) => {
+    return favourites.some(fav => fav.projectId === projectId);
   };
 
   const handleRegenerate = async (index) => {
@@ -204,7 +204,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
         
         setAllRecommendations([...allRecommendations, ...response.data]);
         
-        const allProjects = [...favorites, ...newDisplayed];
+        const allProjects = [...favourites, ...newDisplayed];
         const uniqueProjects = allProjects.filter((proj, idx, self) =>
           idx === self.findIndex(p => p.projectId === proj.projectId)
         );
@@ -225,10 +225,10 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setLoading(true);
       setError(null);
       
-      const favoritedProjects = displayedRecommendations.filter(rec => 
-        isFavorited(rec.projectId)
+      const favouritedProjects = displayedRecommendations.filter(rec => 
+        isFavourited(rec.projectId)
       );
-      const excludeIds = favoritedProjects.map(rec => rec.projectId);
+      const excludeIds = favouritedProjects.map(rec => rec.projectId);
       
       const response = await getAIRecommendations(studentId, excludeIds, userPreferences);
       
@@ -236,7 +236,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       let newRecIndex = 0;
       
       for (let i = 0; i < 3; i++) {
-        if (i < displayedRecommendations.length && isFavorited(displayedRecommendations[i].projectId)) {
+        if (i < displayedRecommendations.length && isFavourited(displayedRecommendations[i].projectId)) {
           newDisplayed.push(displayedRecommendations[i]);
         } else if (newRecIndex < response.data.length) {
           newDisplayed.push(response.data[newRecIndex]);
@@ -247,7 +247,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
       setDisplayedRecommendations(newDisplayed);
       setAllRecommendations([...allRecommendations, ...response.data]);
       
-      const allProjects = [...favorites, ...newDisplayed];
+      const allProjects = [...favourites, ...newDisplayed];
       const uniqueProjects = allProjects.filter((proj, idx, self) =>
         idx === self.findIndex(p => p.projectId === proj.projectId)
       );
@@ -260,10 +260,10 @@ function Recommendations({ studentId, userPreferences, onBack }) {
     }
   };
 
-  const handleClearFavorites = () => {
-    if (window.confirm('Are you sure you want to clear all favorites?')) {
-      setFavorites([]);
-      localStorage.setItem(`favorites_${studentId}`, JSON.stringify([]));
+  const handleClearFavourites = () => {
+    if (window.confirm('Are you sure you want to clear all favourites?')) {
+      setFavourites([]);
+      localStorage.setItem(`favourites_${studentId}`, JSON.stringify([]));
     }
   };
 
@@ -287,14 +287,14 @@ function Recommendations({ studentId, userPreferences, onBack }) {
 
       {error && <div className="error-banner">{error}</div>}
 
-      {favorites.length > 0 && (
-        <div className="favorites-section">
-          <h2>⭐ Your Favorites ({favorites.length})</h2>
-          <p className="favorites-hint">
-            You've favorited {favorites.length} project{favorites.length !== 1 ? 's' : ''}
+      {favourites.length > 0 && (
+        <div className="favourites-section">
+          <h2>⭐ Your Favourites ({favourites.length})</h2>
+          <p className="favourites-hint">
+            You've favourited {favourites.length} project{favourites.length !== 1 ? 's' : ''}
           </p>
-          <button onClick={handleClearFavorites} className="clear-favorites-button">
-            Clear All Favorites
+          <button onClick={handleClearFavourites} className="clear-favourites-button">
+            Clear All Favourites
           </button>
         </div>
       )}
@@ -303,7 +303,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
         {displayedRecommendations.map((rec, index) => (
           <div 
             key={`${rec.projectId}-${index}`}
-            className={`recommendation-card ${isFavorited(rec.projectId) ? 'favorited' : ''}`}
+            className={`recommendation-card ${isFavourited(rec.projectId) ? 'favourited' : ''}`}
           >
             <div className="card-header">
               <div className="project-info">
@@ -313,11 +313,11 @@ function Recommendations({ studentId, userPreferences, onBack }) {
                 </span>
               </div>
               <button
-                onClick={() => handleFavorite(rec)}
-                className={`favorite-button ${isFavorited(rec.projectId) ? 'active' : ''}`}
-                title={isFavorited(rec.projectId) ? 'Remove from favorites' : 'Add to favorites'}
+                onClick={() => handleFavourite(rec)}
+                className={`favourite-button ${isFavourited(rec.projectId) ? 'active' : ''}`}
+                title={isFavourited(rec.projectId) ? 'Remove from favourites' : 'Add to favourites'}
               >
-                {isFavorited(rec.projectId) ? '★' : '☆'}
+                {isFavourited(rec.projectId) ? '★' : '☆'}
               </button>
             </div>
 
@@ -333,14 +333,14 @@ function Recommendations({ studentId, userPreferences, onBack }) {
                 }}
                 className="skill-gap-button"
               >
-                📊 Analyze Skill Gap
+                📊 Analyse Skill Gap
               </button>
               
               <button
                 onClick={() => handleRegenerate(index)}
                 className="regenerate-button"
-                disabled={regeneratingIndex === index || isFavorited(rec.projectId)}
-                title={isFavorited(rec.projectId) ? 'Cannot regenerate favorited projects' : 'Get a different recommendation'}
+                disabled={regeneratingIndex === index || isFavourited(rec.projectId)}
+                title={isFavourited(rec.projectId) ? 'Cannot regenerate favourited projects' : 'Get a different recommendation'}
               >
                 {regeneratingIndex === index ? '🔄 Regenerating...' : '🔄 Regenerate'}
               </button>
@@ -355,7 +355,7 @@ function Recommendations({ studentId, userPreferences, onBack }) {
           className="regenerate-all-button"
           disabled={loading}
         >
-          {loading ? '🔄 Regenerating...' : '🔄 Regenerate All (Keep Favorites)'}
+          {loading ? '🔄 Regenerating...' : '🔄 Regenerate All (Keep Favourites)'}
         </button>
       </div>
 

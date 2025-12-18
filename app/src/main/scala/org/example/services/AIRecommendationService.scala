@@ -316,7 +316,7 @@ Return ONLY the JSON array, nothing else."""
         projectId = random.nextInt(9000) + 1000,
         projectTitle = "Data Analysis and Visualization System",
         matchScore = 0.70,
-        reason = "Build a system that analyzes real-world data and presents insights through interactive visualizations, applying your analytical skills."
+        reason = "Build a system that analyses real-world data and presents insights through interactive visualizations, applying your analytical skills."
       )
     )
     

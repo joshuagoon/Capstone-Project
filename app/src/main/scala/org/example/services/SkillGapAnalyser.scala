@@ -31,7 +31,7 @@ case class StudentSubject(
 )
 
 @Service
-class SkillGapAnalyzer {
+class SkillGapAnalyser {
 
   // Define minimum required scores for different difficulty levels
   private val requiredScoresByDifficulty = Map(
@@ -243,9 +243,9 @@ class SkillGapAnalyzer {
     )
 
   /**
-   * Main method to analyze skill gaps WITH student subject data
+   * Main method to analyse skill gaps WITH student subject data
    */
-  def analyzeSkillGapWithSubjects(
+  def analyseSkillGapWithSubjects(
     studentCompetencies: Map[String, Double],
     studentSubjects: List[StudentSubject],
     projectTitle: String,
@@ -255,11 +255,11 @@ class SkillGapAnalyzer {
     
     val requiredScore = requiredScoresByDifficulty.getOrElse(projectDifficulty, 70.0)
     
-    println(s"Analyzing skill gap for project: $projectTitle")
+    println(s"Analysing skill gap for project: $projectTitle")
     println(s"Required skills: ${projectSkills.mkString(", ")}")
     println(s"Student has ${studentSubjects.size} courses")
     
-    // Analyze each required skill
+    // Analyse each required skill
     val skillAnalysis = projectSkills.map { skill =>
       val currentScore = findMatchingCompetency(studentCompetencies, skill)
       val gap = math.max(0, requiredScore - currentScore)

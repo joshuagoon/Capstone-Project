@@ -3,7 +3,7 @@ package org.example.controllers
 import org.springframework.web.bind.annotation._
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.{ResponseEntity, HttpStatus}
-import org.example.services.{AIRecommendationService, StudentDataService, SkillGapAnalyzer, StudentProfile, UserPreferences, StudentSubject}
+import org.example.services.{AIRecommendationService, StudentDataService, SkillGapAnalyser, StudentProfile, UserPreferences, StudentSubject}
 import org.example.repositories.RealStudentRepository
 import scala.beans.BeanProperty
 import scala.jdk.CollectionConverters._
@@ -61,7 +61,7 @@ class AIRecommendationController {
   private var studentRepository: RealStudentRepository = _
   
   @Autowired
-  private var skillGapAnalyzer: SkillGapAnalyzer = _
+  private var skillGapAnalyser: SkillGapAnalyser = _
 
   /**
    * Login endpoint - verify student ID exists
@@ -221,10 +221,10 @@ class AIRecommendationController {
   }
 
   /**
-   * Analyze skill gap for a specific project
+   * Analyse skill gap for a specific project
    */
   @GetMapping(Array("/skill-gap/{studentId}"))
-  def analyzeSkillGap(
+  def analyseSkillGap(
     @PathVariable studentId: Int,
     @RequestParam projectTitle: String,
     @RequestParam projectSkills: String,
@@ -313,7 +313,7 @@ class AIRecommendationController {
           val skills = projectSkills.split(",").map(_.trim).toList
           
           // Perform analysis WITH subject data
-          val analysis = skillGapAnalyzer.analyzeSkillGapWithSubjects(
+          val analysis = skillGapAnalyser.analyseSkillGapWithSubjects(
             competencies,
             subjects,
             projectTitle,

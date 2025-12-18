@@ -42,7 +42,7 @@ export const getAIRecommendations = async (studentId, excludeIds = [], preferenc
   }
 };
 
-export const analyzeSkillGap = async (studentId, projectSkills, projectTitle, projectDifficulty) => {
+export const analyseSkillGap = async (studentId, projectSkills, projectTitle, projectDifficulty) => {
   try {
     const response = await axios.get(`${API_URL}/skill-gap/${studentId}`, {
       params: {

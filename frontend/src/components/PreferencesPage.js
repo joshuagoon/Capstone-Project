@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './PreferencesPage.css';
 
 function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
-  const [favorites, setFavorites] = useState([]);
+  const [favourites, setFavourites] = useState([]);
   const [preferences, setPreferences] = useState({
     interests: '',
     preferredDifficulty: '',
@@ -16,46 +16,46 @@ function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
     window.scrollTo(0, 0);
   }, []);
 
-  // Load favorites and preferences on mount
+  // Load favourites and preferences on mount
   useEffect(() => {
-    loadFavorites();
+    loadFavourites();
     loadPreferences();
   }, [studentId]);
 
-  const loadFavorites = () => {
-    const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
-    console.log('Raw favorites from localStorage:', savedFavorites);
+  const loadFavourites = () => {
+    const savedFavourites = localStorage.getItem(`favourites_${studentId}`);
+    console.log('Raw favourites from localStorage:', savedFavourites);
     
-    if (savedFavorites) {
+    if (savedFavourites) {
       try {
-        const favoriteProjects = JSON.parse(savedFavorites);
-        console.log('Parsed favorites:', favoriteProjects);
+        const favouriteProjects = JSON.parse(savedFavourites);
+        console.log('Parsed favourites:', favouriteProjects);
         
         // Ensure it's an array
-        if (Array.isArray(favoriteProjects) && favoriteProjects.length > 0) {
+        if (Array.isArray(favouriteProjects) && favouriteProjects.length > 0) {
           // Check if it's an array of objects (not just IDs)
-          if (typeof favoriteProjects[0] === 'object' && favoriteProjects[0].projectTitle) {
-            console.log('Setting favorites (objects):', favoriteProjects);
-            setFavorites(favoriteProjects);
-          } else if (typeof favoriteProjects[0] === 'number') {
+          if (typeof favouriteProjects[0] === 'object' && favouriteProjects[0].projectTitle) {
+            console.log('Setting favourites (objects):', favouriteProjects);
+            setFavourites(favouriteProjects);
+          } else if (typeof favouriteProjects[0] === 'number') {
             // If it's just IDs, try to get full details from all_recommendations
-            console.log('Favorites are just IDs, fetching full details...');
+            console.log('Favourites are just IDs, fetching full details...');
             const allRecs = localStorage.getItem(`all_recommendations_${studentId}`);
             if (allRecs) {
               const allProjects = JSON.parse(allRecs);
-              const favoriteDetails = allProjects.filter(proj => 
-                favoriteProjects.includes(proj.projectId)
+              const favouriteDetails = allProjects.filter(proj => 
+                favouriteProjects.includes(proj.projectId)
               );
-              console.log('Loaded favorite details:', favoriteDetails);
-              setFavorites(favoriteDetails);
+              console.log('Loaded favourite details:', favouriteDetails);
+              setFavourites(favouriteDetails);
             }
           }
         }
       } catch (e) {
-        console.error('Failed to load favorites:', e);
+        console.error('Failed to load favourites:', e);
       }
     } else {
-      console.log('No favorites found');
+      console.log('No favourites found');
     }
   };
 
@@ -84,20 +84,20 @@ function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleRemoveFavorite = (projectId) => {
-    const savedFavorites = localStorage.getItem(`favorites_${studentId}`);
-    if (savedFavorites) {
-      const favoriteProjects = JSON.parse(savedFavorites);
-      const updated = favoriteProjects.filter(fav => fav.projectId !== projectId);
-      localStorage.setItem(`favorites_${studentId}`, JSON.stringify(updated));
-      setFavorites(updated);
+  const handleRemoveFavourite = (projectId) => {
+    const savedFavourites = localStorage.getItem(`favourites_${studentId}`);
+    if (savedFavourites) {
+      const favouriteProjects = JSON.parse(savedFavourites);
+      const updated = favouriteProjects.filter(fav => fav.projectId !== projectId);
+      localStorage.setItem(`favourites_${studentId}`, JSON.stringify(updated));
+      setFavourites(updated);
     }
   };
 
-  const handleClearAllFavorites = () => {
-    if (window.confirm('Are you sure you want to clear all favorites?')) {
-      localStorage.setItem(`favorites_${studentId}`, JSON.stringify([]));
-      setFavorites([]);
+  const handleClearAllFavourites = () => {
+    if (window.confirm('Are you sure you want to clear all favourites?')) {
+      localStorage.setItem(`favourites_${studentId}`, JSON.stringify([]));
+      setFavourites([]);
     }
   };
 
@@ -107,44 +107,44 @@ function PreferencesPage({ studentId, onGenerateRecommendations, onBack }) {
         <button onClick={onBack} className="back-button">
           ← Back to Dashboard
         </button>
-        <h1>Preferences & Favorites</h1>
+        <h1>Preferences & Favourites</h1>
         <p className="subtitle">Customize your capstone project recommendations</p>
       </div>
 
       <div className="preferences-container">
-        {/* Favorites Section */}
-        <div className="section favorites-display-section">
+        {/* Favourites Section */}
+        <div className="section favourites-display-section">
           <div className="section-header">
-            <h2>⭐ Your Favorite Projects ({favorites.length})</h2>
-            {favorites.length > 0 && (
-              <button onClick={handleClearAllFavorites} className="clear-all-button">
+            <h2>⭐ Your Favourite Projects ({favourites.length})</h2>
+            {favourites.length > 0 && (
+              <button onClick={handleClearAllFavourites} className="clear-all-button">
                 Clear All
               </button>
             )}
           </div>
 
-          {favorites.length === 0 ? (
+          {favourites.length === 0 ? (
             <div className="empty-state">
-              <p>🔖 You haven't favorited any projects yet.</p>
-              <p className="hint">Generate recommendations and star your favorites to see them here!</p>
+              <p>🔖 You haven't favourited any projects yet.</p>
+              <p className="hint">Generate recommendations and star your favourites to see them here!</p>
             </div>
           ) : (
-            <div className="favorites-grid">
-              {favorites.map((fav) => (
-                <div key={fav.projectId} className="favorite-card">
-                  <div className="favorite-header">
+            <div className="favourites-grid">
+              {favourites.map((fav) => (
+                <div key={fav.projectId} className="favourite-card">
+                  <div className="favourite-header">
                     <h3>{fav.projectTitle}</h3>
                     <button
-                      onClick={() => handleRemoveFavorite(fav.projectId)}
-                      className="remove-favorite-button"
-                      title="Remove from favorites"
+                      onClick={() => handleRemoveFavourite(fav.projectId)}
+                      className="remove-favourite-button"
+                      title="Remove from favourites"
                     >
                       ✕
                     </button>
                   </div>
-                  <div className="favorite-body">
+                  <div className="favourite-body">
                     <span className="match-score">{(fav.score * 100).toFixed(0)}% match</span>
-                    <p className="favorite-reason">{fav.reason}</p>
+                    <p className="favourite-reason">{fav.reason}</p>
                   </div>
                 </div>
               ))}
