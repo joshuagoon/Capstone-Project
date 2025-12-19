@@ -20,6 +20,7 @@ frontend/dist/
 
 # Environment & Credentials
 application.properties
+app/src/main/resources/application.properties
 .env
 .env.local
 *.pem

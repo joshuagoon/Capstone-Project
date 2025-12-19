@@ -1,0 +1,13 @@
+# Cassandra Database
+spring.cassandra.contact-points=sunway.hep88.com
+spring.cassandra.port=9042
+spring.cassandra.local-datacenter=datacenter1
+spring.cassandra.keyspace-name=subjectplanning
+spring.cassandra.username=planusertest
+spring.cassandra.password=YOUR_DATABASE_PASSWORD_HERE
+spring.cassandra.schema-action=none
+
+server.port=8080
+
+# Anthropic Claude API Key
+anthropic.api.key=YOUR_ANTHROPIC_API_KEY_HERE
