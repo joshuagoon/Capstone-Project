@@ -1,70 +1,97 @@
-# Getting Started with Create React App
+# Frontend - Student Performance Tracker
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React frontend for the Student Performance Tracker and Capstone Project Recommendation System.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+**Technology Stack:**
+- React 18
+- JavaScript ES6+
+- CSS3
+- Axios (HTTP client)
 
-### `npm start`
+**Key Components:**
+- Login - Student authentication
+- Dashboard - Performance tracking with competencies
+- Preferences - Manage favourites and recommendation preferences
+- Recommendations - AI-generated project ideas
+- Grades - Full grade history with filters
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Installation
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Prerequisites
+- Node.js 18+
+- npm or yarn
 
-### `npm test`
+### Setup
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+# Install dependencies
+npm install
 
-### `npm run build`
+# Start development server
+npm start
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Development server runs on `http://localhost:3000`
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Production Build
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm run build
+```
 
-### `npm run eject`
+Creates optimised build in `build/` directory.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Configuration
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Update API endpoint in `src/services/api.js`:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**For local development:**
+```javascript
+const API_BASE_URL = 'http://localhost:8080/api';
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+**For production (AWS):**
+```javascript
+const API_BASE_URL = 'http://YOUR-AWS-IP:8080/api';
+```
 
-## Learn More
+**Using environment variables (recommended):**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Create `.env.development`:
+```
+REACT_APP_API_URL=http://localhost:8080/api
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Create `.env.production`:
+```
+REACT_APP_API_URL=http://YOUR-AWS-IP:8080/api
+```
 
-### Code Splitting
+## Project Structure
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```
+frontend/
+├── src/
+│   ├── components/       # React components
+│   ├── services/         # API calls
+│   ├── App.js           # Main app
+│   └── index.js         # Entry point
+├── public/
+└── package.json
+```
 
-### Analyzing the Bundle Size
+## Common Commands
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```bash
+npm start          # Start development server
+npm test           # Run tests
+npm run build      # Create production build
+```
 
-### Making a Progressive Web App
+## Notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Code uses British English spelling (favourites, analyse)
+- Data stored in localStorage (favourites, preferences)
+- Backend must be running on port 8080

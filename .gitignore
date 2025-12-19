@@ -1,5 +1,39 @@
-# Ignore Gradle project-specific cache directory
-.gradle
+# ============================================================================
+# Capstone-Project .gitignore
+# ============================================================================
 
-# Ignore Gradle build output directory
-build
+# Backend (Scala/Gradle)
+.gradle/
+build/
+app/build/
+*.class
+*.jar
+.metals/
+.bloop/
+.bsp/
+target/
+
+# Frontend (React/Node)
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+
+# Environment & Credentials
+application.properties
+.env
+.env.local
+*.pem
+*.key
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
